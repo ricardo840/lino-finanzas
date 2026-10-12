@@ -1,0 +1,45 @@
+name: lino
+description: "Lino: finanzas personales con cuentas, tarjetas, ahorro semanal y simulador de compras."
+publish_to: 'none'
+
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.6.0
+  flutter: ">=3.27.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+
+  cupertino_icons: ^1.0.8
+  # Estado
+  flutter_riverpod: ^2.6.1
+  # Base de datos local cifrada (SQLCipher)
+  sqflite_sqlcipher: ^3.0.0
+  # Llaves, hash del PIN y ajustes en el Keystore de Android
+  flutter_secure_storage: ^9.2.2
+  # Huella digital
+  local_auth: ^2.3.0
+  local_auth_android: any
+  # PBKDF2 para el PIN
+  crypto: ^3.0.3
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+  flutter_launcher_icons: ^0.14.1
+
+flutter:
+  uses-material-design: false
+
+# Ícono de la app (se genera con: dart run flutter_launcher_icons)
+flutter_launcher_icons:
+  android: true
+  ios: false
+  image_path: "assets/icono/lino.png"
+  adaptive_icon_background: "assets/icono/lino_fondo.png"
+  adaptive_icon_foreground: "assets/icono/lino_frente.png"

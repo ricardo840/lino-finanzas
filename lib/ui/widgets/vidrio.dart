@@ -60,6 +60,49 @@ class PanelVidrio extends StatelessWidget {
   }
 }
 
+/// Panel de vidrio para las piezas que flotan sobre el contenido (la isla de
+/// pestañas y el encabezado): más opaco que un panel normal, para que se lea
+/// lo que lleva dentro, y con sombra.
+class PanelIsla extends StatelessWidget {
+  const PanelIsla({
+    super.key,
+    required this.child,
+    required this.radio,
+    this.padding = EdgeInsets.zero,
+  });
+
+  final Widget child;
+  final double radio;
+  final EdgeInsetsGeometry padding;
+
+  @override
+  Widget build(BuildContext context) {
+    final tema = context.tema;
+    final sombra = tema.esOscuro
+        ? tema.fondo.last.withValues(alpha: 0.55)
+        : tema.texto.withValues(alpha: 0.16);
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(radio),
+        boxShadow: [BoxShadow(color: sombra, blurRadius: 24, offset: const Offset(0, 10))],
+      ),
+      child: PanelVidrio(
+        radio: radio,
+        padding: padding,
+        gradiente: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color.alphaBlend(tema.vidrioAlto, tema.barra),
+            Color.alphaBlend(tema.vidrio, tema.barra),
+          ],
+        ),
+        child: child,
+      ),
+    );
+  }
+}
+
 /// Da respuesta visual al tocar (se encoge y atenúa un poco).
 class Presionable extends StatefulWidget {
   const Presionable({super.key, required this.onTap, required this.child, this.onLongPress});

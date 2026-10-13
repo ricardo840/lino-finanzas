@@ -9,7 +9,7 @@ import '../../../core/seguridad/servicio_auth.dart';
 import '../../../estado/servicios.dart';
 import '../../tema/contexto.dart';
 import '../../widgets/dialogos.dart';
-import '../../widgets/fondo_lino.dart';
+import '../../widgets/paginas.dart';
 import '../../widgets/teclado_pin.dart';
 
 enum _Paso { actual, nuevo, confirmar }
@@ -109,40 +109,31 @@ class _CambiarPinPantallaState extends ConsumerState<CambiarPinPantalla> {
       _Paso.nuevo => 'Escribe el nuevo PIN',
       _Paso.confirmar => 'Confirma el nuevo PIN',
     };
-    return CupertinoPageScaffold(
-      backgroundColor: tema.fondo.first,
-      navigationBar: CupertinoNavigationBar(
-        middle: const Text('Cambiar PIN'),
-        backgroundColor: tema.barra,
-        border: null,
-      ),
-      child: FondoLino(
-        child: SafeArea(
-          child: Column(
-            children: [
-              const Spacer(flex: 2),
-              Text(titulo, style: tema.titulo),
-              const SizedBox(height: 24),
-              IndicadorPin(llenos: _pin.length, error: _error),
-              const SizedBox(height: 14),
-              SizedBox(
-                height: 40,
-                child: Center(
-                  child: _ocupado
-                      ? const CupertinoActivityIndicator()
-                      : Text(
-                          _mensaje ?? '',
-                          textAlign: TextAlign.center,
-                          style: tema.secundario.copyWith(color: tema.negativo),
-                        ),
-                ),
-              ),
-              const Spacer(),
-              TecladoPin(alDigito: _alDigito, alBorrar: _alBorrar, habilitado: !_ocupado),
-              const SizedBox(height: 28),
-            ],
+    return PaginaSecundaria(
+      titulo: 'Cambiar PIN',
+      cuerpo: Column(
+        children: [
+          const Spacer(flex: 2),
+          Text(titulo, style: tema.titulo),
+          const SizedBox(height: 24),
+          IndicadorPin(llenos: _pin.length, error: _error),
+          const SizedBox(height: 14),
+          SizedBox(
+            height: 40,
+            child: Center(
+              child: _ocupado
+                  ? const CupertinoActivityIndicator()
+                  : Text(
+                      _mensaje ?? '',
+                      textAlign: TextAlign.center,
+                      style: tema.secundario.copyWith(color: tema.negativo),
+                    ),
+            ),
           ),
-        ),
+          const Spacer(),
+          TecladoPin(alDigito: _alDigito, alBorrar: _alBorrar, habilitado: !_ocupado),
+          const SizedBox(height: 28),
+        ],
       ),
     );
   }

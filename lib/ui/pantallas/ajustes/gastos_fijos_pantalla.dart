@@ -6,7 +6,6 @@ import '../../../estado/datos.dart';
 import '../../categorias.dart';
 import '../../tema/contexto.dart';
 import '../../widgets/comunes.dart';
-import '../../widgets/fondo_lino.dart';
 import '../../widgets/monto_texto.dart';
 import '../../widgets/paginas.dart';
 import '../../widgets/vidrio.dart';
@@ -21,24 +20,14 @@ class GastosFijosPantalla extends ConsumerWidget {
     final tema = context.tema;
     final fijos = ref.watch(gastosFijosProvider);
 
-    return CupertinoPageScaffold(
-      backgroundColor: tema.fondo.first,
-      navigationBar: CupertinoNavigationBar(
-        middle: const Text('Gastos fijos'),
-        backgroundColor: tema.barra,
-        border: null,
-        trailing: BotonIcono(
-          icono: CupertinoIcons.plus_circle_fill,
-          tamano: 26,
-          onPressed: () => abrirPantalla<void>(context, const GastoFijoFormPantalla(), modal: true),
-        ),
+    return PaginaSecundaria(
+      titulo: 'Gastos fijos',
+      derecha: BotonIcono(
+        icono: CupertinoIcons.plus_circle_fill,
+        tamano: 26,
+        onPressed: () => abrirPantalla<void>(context, const GastoFijoFormPantalla(), modal: true),
       ),
-      child: FondoLino(
-        child: SafeArea(
-          bottom: false,
-          child: ListView(
-            padding: EdgeInsets.fromLTRB(16, 16, 16, MediaQuery.paddingOf(context).bottom + 32),
-            children: fijos.when(
+      hijos: fijos.when(
               skipLoadingOnReload: true,
               loading: () => const [Cargando()],
               error: (e, _) => [ErrorDatos(e)],
@@ -83,9 +72,6 @@ class GastosFijosPantalla extends ConsumerWidget {
                 ];
               },
             ),
-          ),
-        ),
-      ),
     );
   }
 }

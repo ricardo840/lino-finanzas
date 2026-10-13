@@ -45,51 +45,29 @@ class BarraIsla extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final tema = context.tema;
-    final sombra = tema.esOscuro
-        ? tema.fondo.last.withValues(alpha: 0.55)
-        : tema.texto.withValues(alpha: 0.16);
     return MediaQuery.withNoTextScaling(
       child: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: anchoMaximo),
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(altura / 2),
-              boxShadow: [
-                BoxShadow(color: sombra, blurRadius: 24, offset: const Offset(0, 10)),
-              ],
-            ),
-            child: PanelVidrio(
-              radio: altura / 2,
-              padding: const EdgeInsets.all(_relleno),
-              // Más opaco que un panel normal para que las pestañas se lean
-              // sobre el contenido que pasa por debajo.
-              gradiente: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  Color.alphaBlend(tema.vidrioAlto, tema.barra),
-                  Color.alphaBlend(tema.vidrio, tema.barra),
-                ],
-              ),
-              child: SizedBox(
-                height: altura - _relleno * 2,
-                child: Row(
-                  children: [
-                    for (var i = 0; i < pestanas.length; i++)
-                      Expanded(
-                        child: _BotonIsla(
-                          pestana: pestanas[i],
-                          activa: i == indice,
-                          onTap: () {
-                            HapticFeedback.selectionClick();
-                            alTocar(i);
-                          },
-                        ),
+          child: PanelIsla(
+            radio: altura / 2,
+            padding: const EdgeInsets.all(_relleno),
+            child: SizedBox(
+              height: altura - _relleno * 2,
+              child: Row(
+                children: [
+                  for (var i = 0; i < pestanas.length; i++)
+                    Expanded(
+                      child: _BotonIsla(
+                        pestana: pestanas[i],
+                        activa: i == indice,
+                        onTap: () {
+                          HapticFeedback.selectionClick();
+                          alTocar(i);
+                        },
                       ),
-                  ],
-                ),
+                    ),
+                ],
               ),
             ),
           ),

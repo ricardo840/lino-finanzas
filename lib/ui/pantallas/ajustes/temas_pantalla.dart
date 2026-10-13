@@ -6,7 +6,7 @@ import '../../tema/contexto.dart';
 import '../../tema/lino_tema.dart';
 import '../../tema/temas.dart';
 import '../../widgets/campos.dart';
-import '../../widgets/fondo_lino.dart';
+import '../../widgets/paginas.dart';
 import '../../widgets/vidrio.dart';
 
 class TemasPantalla extends ConsumerWidget {
@@ -14,7 +14,6 @@ class TemasPantalla extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final tema = context.tema;
     final actual = ref.watch(ajustesProvider.select((a) => a.temaId));
     final oscuros = temasLino.where((t) => t.esOscuro).toList();
     final claros = temasLino.where((t) => !t.esOscuro).toList();
@@ -39,28 +38,15 @@ class TemasPantalla extends ConsumerWidget {
           ],
         );
 
-    return CupertinoPageScaffold(
-      backgroundColor: tema.fondo.first,
-      navigationBar: CupertinoNavigationBar(
-        middle: const Text('Tema'),
-        backgroundColor: tema.barra,
-        border: null,
-      ),
-      child: FondoLino(
-        child: SafeArea(
-          bottom: false,
-          child: ListView(
-            padding: EdgeInsets.fromLTRB(16, 16, 16, MediaQuery.paddingOf(context).bottom + 32),
-            children: [
-              const Etiqueta('Oscuros'),
-              cuadricula(oscuros),
-              const SizedBox(height: 20),
-              const Etiqueta('Claros de temporada'),
-              cuadricula(claros),
-            ],
-          ),
-        ),
-      ),
+    return PaginaSecundaria(
+      titulo: 'Tema',
+      hijos: [
+        const Etiqueta('Oscuros'),
+        cuadricula(oscuros),
+        const SizedBox(height: 20),
+        const Etiqueta('Claros de temporada'),
+        cuadricula(claros),
+      ],
     );
   }
 }

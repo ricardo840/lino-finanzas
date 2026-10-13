@@ -5,14 +5,15 @@ import 'package:lino/core/seguridad/almacen_seguro.dart';
 import 'package:lino/ui/pantallas/shell.dart';
 import 'package:lino/ui/widgets/barra_isla.dart';
 import 'package:lino/ui/widgets/boton_flotante.dart';
+import 'package:lino/ui/widgets/encabezado.dart';
 
 import 'apoyo.dart';
 
 /// Abre las pestañas principales en una pantalla alta. La fuente de las
 /// pruebas es casi el doble de ancha que la real, así que 800 puntos de ancho
 /// equivalen a un teléfono común.
-Future<void> _abrirShell(WidgetTester tester) async {
-  tester.view.physicalSize = const Size(800, 1600);
+Future<void> _abrirShell(WidgetTester tester, {double alto = 1600}) async {
+  tester.view.physicalSize = Size(800, alto);
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.reset);
   await tester.pumpWidget(
@@ -108,6 +109,35 @@ void main() {
     expect(find.text('Sin gastos fijos'), findsOneWidget);
 
     await _tocar(tester, _pestana('Ajustes'));
+    expect(find.text('Sin gastos fijos'), findsNothing);
+    expect(find.text('Modo privacidad'), findsOneWidget);
+  });
+
+  testWidgets('el encabezado se vuelve cápsula flotante al desplazar', (tester) async {
+    // Pantalla baja, para que Ajustes no quepa y se pueda desplazar.
+    await _abrirShell(tester, alto: 520);
+    await _tocar(tester, _pestana('Ajustes'));
+    // En reposo el título grande va sobre el fondo, sin cápsula.
+    expect(find.byType(CapsulaEncabezado), findsNothing);
+
+    await tester.drag(find.text('Modo privacidad'), const Offset(0, -200));
+    await tester.pumpAndSettle();
+    expect(
+      find.descendant(of: find.byType(CapsulaEncabezado), matching: find.text('Ajustes')),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('las pantallas internas regresan con la flecha del encabezado', (tester) async {
+    await _abrirShell(tester);
+    await _tocar(tester, _pestana('Ajustes'));
+    await _tocar(tester, find.text('Gastos fijos'));
+    expect(
+      find.descendant(of: find.byType(CapsulaEncabezado), matching: find.text('Gastos fijos')),
+      findsOneWidget,
+    );
+
+    await _tocar(tester, find.byIcon(CupertinoIcons.chevron_left));
     expect(find.text('Sin gastos fijos'), findsNothing);
     expect(find.text('Modo privacidad'), findsOneWidget);
   });

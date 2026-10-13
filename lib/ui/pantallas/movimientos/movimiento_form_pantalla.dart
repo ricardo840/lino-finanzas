@@ -16,9 +16,24 @@ import '../../widgets/vidrio.dart';
 
 /// Alta y edición de ingresos, gastos y transferencias.
 class MovimientoFormPantalla extends ConsumerStatefulWidget {
-  const MovimientoFormPantalla({super.key, this.movimiento});
+  const MovimientoFormPantalla({
+    super.key,
+    this.movimiento,
+    this.montoInicial,
+    this.cuentaInicialId,
+    this.descripcionInicial,
+    this.fechaInicial,
+  });
 
+  /// Movimiento que se edita; null para uno nuevo.
   final Movimiento? movimiento;
+
+  // Valores para abrir un gasto nuevo ya llenado (por ejemplo, desde una
+  // compra planeada). No aplican al editar.
+  final int? montoInicial;
+  final int? cuentaInicialId;
+  final String? descripcionInicial;
+  final DateTime? fechaInicial;
 
   @override
   ConsumerState<MovimientoFormPantalla> createState() => _MovimientoFormPantallaState();
@@ -43,12 +58,13 @@ class _MovimientoFormPantallaState extends ConsumerState<MovimientoFormPantalla>
     super.initState();
     final m = widget.movimiento;
     _tipo = m?.tipo ?? TipoMovimiento.egreso;
-    _monto = TextEditingController(text: m == null ? '' : montoEditable(m.monto));
-    _descripcion = TextEditingController(text: m?.descripcion ?? '');
-    _cuentaId = m?.cuentaId;
+    final monto = m?.monto ?? widget.montoInicial;
+    _monto = TextEditingController(text: monto == null ? '' : montoEditable(monto));
+    _descripcion = TextEditingController(text: m?.descripcion ?? widget.descripcionInicial ?? '');
+    _cuentaId = m?.cuentaId ?? widget.cuentaInicialId;
     _destinoId = m?.cuentaDestinoId;
     _categoria = m?.categoria ?? categoriasGasto.first.id;
-    _fecha = m?.fecha ?? soloFecha(DateTime.now());
+    _fecha = m?.fecha ?? widget.fechaInicial ?? soloFecha(DateTime.now());
     _esSueldo = m?.esSueldo ?? false;
     _esFijo = m?.esFijo ?? false;
   }
@@ -140,7 +156,8 @@ class _MovimientoFormPantallaState extends ConsumerState<MovimientoFormPantalla>
     setState(() => _guardando = true);
     await ref.escribir((repo) => repo.guardarMovimiento(movimiento));
     if (!mounted) return;
-    Navigator.of(context).pop();
+    // true: el movimiento se guardó (quien abrió el formulario puede necesitarlo).
+    Navigator.of(context).pop(true);
   }
 
   Future<void> _eliminar() async {
@@ -213,7 +230,7 @@ class _MovimientoFormPantallaState extends ConsumerState<MovimientoFormPantalla>
           controller: _monto,
           placeholder: '0.00',
           prefijo: '\$',
-          autofocus: !_editando,
+          autofocus: !_editando && widget.montoInicial == null,
           alineacion: TextAlign.center,
           teclado: const TextInputType.numberWithOptions(decimal: true),
           formatos: formatoMonto,

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/fechas.dart';
 import '../../../core/formato.dart';
+import '../../../data/modelos/compra_planeada.dart';
 import '../../../dominio/simulador_compra.dart';
 import '../../../estado/datos.dart';
 import '../../../estado/navegacion.dart';
@@ -10,10 +11,14 @@ import '../../tema/contexto.dart';
 import '../../widgets/campos.dart';
 import '../../widgets/comunes.dart';
 import '../../widgets/dialogos.dart';
+import '../../widgets/linea_tiempo.dart';
 import '../../widgets/monto_texto.dart';
+import '../../widgets/paginas.dart';
 import '../../widgets/vidrio.dart';
+import '../movimientos/movimiento_form_pantalla.dart';
 
-/// "¿Cuándo y con qué me conviene comprar?"
+/// Simulador de compras: con cuánto cuesta y entre qué fechas se podría
+/// comprar, recomienda el mejor día y con qué pagar.
 class SimuladorVista extends ConsumerStatefulWidget {
   const SimuladorVista({super.key});
 
@@ -23,33 +28,59 @@ class SimuladorVista extends ConsumerStatefulWidget {
 
 class _SimuladorVistaState extends ConsumerState<SimuladorVista> {
   final _monto = TextEditingController();
-  DateTime _fecha = soloFecha(DateTime.now());
-  int _espera = 0;
+  final _descripcion = TextEditingController();
+  late DateTime _desde;
+  late DateTime _hasta;
   bool _calculando = false;
   ResultadoSimulacion? _resultado;
 
-  static const _opcionesEspera = {0: 'Hoy', 3: '3 días', 7: '1 sem', 15: '15 días', 30: '1 mes'};
+  @override
+  void initState() {
+    super.initState();
+    _desde = soloFecha(DateTime.now());
+    _hasta = _desde;
+  }
 
   @override
   void dispose() {
     _monto.dispose();
+    _descripcion.dispose();
     super.dispose();
   }
 
-  Future<void> _elegirFecha() async {
+  void _fijarRango(DateTime desde, DateTime hasta) => setState(() {
+        _desde = desde;
+        _hasta = hasta.isBefore(desde) ? desde : hasta;
+        _resultado = null;
+      });
+
+  /// Atajos del rango: nombre y último día, siempre a partir de hoy.
+  List<(String, DateTime)> _atajos(DateTime hoy) => [
+        ('Hoy', hoy),
+        ('Esta semana', sumarDias(lunesDe(hoy), 6)),
+        ('Este mes', DateTime(hoy.year, hoy.month, diasEnMes(hoy.year, hoy.month))),
+        ('30 días', sumarDias(hoy, 30)),
+      ];
+
+  Future<void> _elegirDesde() async {
     final hoy = soloFecha(DateTime.now());
     final fecha = await elegirFecha(
       context,
-      inicial: _fecha.isBefore(hoy) ? hoy : _fecha,
+      inicial: _desde.isBefore(hoy) ? hoy : _desde,
       minima: hoy,
       maxima: sumarDias(hoy, 365),
     );
-    if (fecha != null && mounted) {
-      setState(() {
-        _fecha = soloFecha(fecha);
-        _resultado = null;
-      });
-    }
+    if (fecha != null && mounted) _fijarRango(soloFecha(fecha), _hasta);
+  }
+
+  Future<void> _elegirHasta() async {
+    final fecha = await elegirFecha(
+      context,
+      inicial: _hasta,
+      minima: _desde,
+      maxima: sumarDias(_desde, 365),
+    );
+    if (fecha != null && mounted) _fijarRango(_desde, soloFecha(fecha));
   }
 
   Future<void> _simular() async {
@@ -61,12 +92,14 @@ class _SimuladorVistaState extends ConsumerState<SimuladorVista> {
     }
     setState(() => _calculando = true);
     final cuentas = await ref.read(cuentasProvider.future);
-    final lunes = semanaPresupuestal(_fecha, esSueldo: false, esFijo: false);
+    final lunes = semanaPresupuestal(_desde, esSueldo: false, esFijo: false);
     final resumen = await ref.read(resumenSemanalProvider(lunes).future);
+    // Poder esperar hasta el último día del rango es lo que el motor llama
+    // días de espera.
     final resultado = simularCompra(
       monto: monto,
-      fecha: _fecha,
-      diasEspera: _espera,
+      fecha: _desde,
+      diasEspera: diasEntre(_desde, _hasta),
       cuentas: cuentas,
       disponibleSemana: resumen.disponible,
     );
@@ -77,26 +110,63 @@ class _SimuladorVistaState extends ConsumerState<SimuladorVista> {
     });
   }
 
+  /// Día en que conviene comprar según la recomendación.
+  DateTime _diaRecomendado(ResultadoSimulacion r) => r.recomendacion.fechaSugerida ?? _desde;
+
+  /// Cuenta o tarjeta recomendada, si la hay.
+  int? _cuentaRecomendada(ResultadoSimulacion r) =>
+      r.recomendacion.credito?.tarjeta.cuenta.id ?? r.recomendacion.debito?.cuenta.cuenta.id;
+
+  Future<void> _guardarPlaneada(ResultadoSimulacion r) async {
+    final dia = _diaRecomendado(r);
+    await ref.escribir(
+      (repo) => repo.guardarCompraPlaneada(
+        CompraPlaneada(
+          descripcion: _descripcion.text.trim(),
+          monto: r.monto,
+          fecha: dia,
+          cuentaId: _cuentaRecomendada(r),
+          creadaEn: DateTime.now(),
+        ),
+      ),
+    );
+    if (!mounted) return;
+    await avisar(
+      context,
+      titulo: 'Compra planeada',
+      mensaje: 'La verás en el calendario el ${fechaMedia(dia)}.',
+    );
+  }
+
+  Future<void> _registrar(ResultadoSimulacion r) => abrirPantalla<bool>(
+        context,
+        MovimientoFormPantalla(
+          montoInicial: r.monto,
+          cuentaInicialId: _cuentaRecomendada(r),
+          descripcionInicial: _descripcion.text.trim(),
+          fechaInicial: _diaRecomendado(r),
+        ),
+        modal: true,
+      );
+
   @override
   Widget build(BuildContext context) {
     // El calendario puede pedir que se simule una compra en un día concreto.
     ref.listen<DateTime?>(diaPorSimularProvider, (_, dia) {
       if (dia == null) return;
-      setState(() {
-        _fecha = dia;
-        _resultado = null;
-      });
+      _fijarRango(dia, dia);
       ref.read(diaPorSimularProvider.notifier).atender();
     });
     final tema = context.tema;
     final resultado = _resultado;
+    final hoy = soloFecha(DateTime.now());
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(4, 0, 4, 14),
           child: Text(
-            'Te digo cuándo y con qué conviene pagar, según tus fechas de corte, tu semana y tu ahorro.',
+            'Dime cuánto cuesta y entre qué fechas podrías comprar. Te digo el mejor día y con qué pagar.',
             style: tema.secundario,
           ),
         ),
@@ -114,37 +184,38 @@ class _SimuladorVistaState extends ConsumerState<SimuladorVista> {
           },
         ),
         const SizedBox(height: 16),
+        const Etiqueta('¿Qué vas a comprar? (opcional)'),
+        CampoVidrio(controller: _descripcion, placeholder: 'Audífonos, llantas...', maxLength: 80),
+        const SizedBox(height: 16),
+        const Etiqueta('¿Cuándo podrías comprar?'),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            for (final (nombre, fin) in _atajos(hoy))
+              _Atajo(
+                texto: nombre,
+                activo: mismaFecha(_desde, hoy) && mismaFecha(_hasta, fin),
+                onTap: () => _fijarRango(hoy, fin),
+              ),
+          ],
+        ),
+        const SizedBox(height: 10),
         GrupoFilas(
           filas: [
             FilaSelector(
-              etiqueta: 'Compraría el',
-              valor: capitalizar(fechaMedia(_fecha)),
+              etiqueta: 'Desde',
+              valor: capitalizar(fechaMedia(_desde)),
               icono: CupertinoIcons.calendar,
-              onTap: _elegirFecha,
+              onTap: _elegirDesde,
+            ),
+            FilaSelector(
+              etiqueta: 'Hasta',
+              valor: capitalizar(fechaMedia(_hasta)),
+              icono: CupertinoIcons.calendar_today,
+              onTap: _elegirHasta,
             ),
           ],
-        ),
-        const SizedBox(height: 16),
-        const Etiqueta('¿Puedo esperar?'),
-        CupertinoSlidingSegmentedControl<int>(
-          groupValue: _espera,
-          backgroundColor: tema.campo,
-          thumbColor: tema.vidrioAlto,
-          children: {
-            for (final e in _opcionesEspera.entries)
-              e.key: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                child: Text(e.value, style: tema.cuerpo.copyWith(fontSize: 13)),
-              ),
-          },
-          onValueChanged: (v) {
-            if (v != null) {
-              setState(() {
-                _espera = v;
-                _resultado = null;
-              });
-            }
-          },
         ),
         const SizedBox(height: 20),
         BotonLino(
@@ -161,6 +232,7 @@ class _SimuladorVistaState extends ConsumerState<SimuladorVista> {
   List<Widget> _resultados(ResultadoSimulacion r) {
     final tema = context.tema;
     final rec = r.recomendacion;
+    final credito = rec.credito;
     final (IconData icono, Color color) = switch (rec.metodo) {
       MetodoSugerido.credito => (CupertinoIcons.creditcard_fill, tema.acento),
       MetodoSugerido.esperar => (CupertinoIcons.clock, tema.advertencia),
@@ -181,6 +253,14 @@ class _SimuladorVistaState extends ConsumerState<SimuladorVista> {
                 Expanded(child: Text(rec.titulo, style: tema.subtitulo)),
               ],
             ),
+            if (credito != null) ...[
+              const SizedBox(height: 16),
+              LineaTiempoCompra(
+                compra: credito.fechaCompra,
+                corte: credito.corte,
+                limite: credito.limitePago,
+              ),
+            ],
             const SizedBox(height: 14),
             for (final razon in rec.razones)
               Padding(
@@ -203,8 +283,23 @@ class _SimuladorVistaState extends ConsumerState<SimuladorVista> {
           ],
         ),
       ),
+      const SizedBox(height: 12),
+      if (rec.metodo != MetodoSugerido.sinFondos) ...[
+        BotonLino(
+          texto: 'Registrar esta compra',
+          icono: CupertinoIcons.add,
+          onPressed: () => _registrar(r),
+        ),
+        const SizedBox(height: 10),
+      ],
+      BotonLino(
+        texto: 'Guardar como compra planeada',
+        icono: CupertinoIcons.calendar_badge_plus,
+        estilo: EstiloBoton.secundario,
+        onPressed: () => _guardarPlaneada(r),
+      ),
       if (r.opcionesCredito.isNotEmpty) ...[
-        const TituloSeccion('Tus tarjetas si compras ese día'),
+        TituloSeccion('Tus tarjetas si compras el ${fechaCorta(_desde)}'),
         PanelVidrio(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
           child: Column(
@@ -269,6 +364,35 @@ class _SimuladorVistaState extends ConsumerState<SimuladorVista> {
         ),
       ),
     ];
+  }
+}
+
+/// Atajo para elegir un rango de fechas común.
+class _Atajo extends StatelessWidget {
+  const _Atajo({required this.texto, required this.activo, required this.onTap});
+
+  final String texto;
+  final bool activo;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final tema = context.tema;
+    return Presionable(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: activo ? tema.acento.withValues(alpha: 0.18) : tema.campo,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: activo ? tema.acento : tema.bordeVidrio),
+        ),
+        child: Text(
+          texto,
+          style: tema.secundario.copyWith(color: activo ? tema.texto : tema.textoSecundario),
+        ),
+      ),
+    );
   }
 }
 

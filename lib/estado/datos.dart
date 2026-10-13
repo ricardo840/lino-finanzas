@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/fechas.dart';
+import '../data/modelos/compra_planeada.dart';
 import '../data/modelos/cuenta.dart';
 import '../data/modelos/gasto_fijo.dart';
 import '../data/modelos/movimiento.dart';
@@ -29,6 +30,12 @@ final gastosFijosProvider = FutureProvider<List<GastoFijo>>((ref) async {
   ref.watch(revisionDatosProvider);
   final repo = await ref.watch(repositorioProvider.future);
   return repo.gastosFijos();
+});
+
+final comprasPlaneadasProvider = FutureProvider<List<CompraPlaneada>>((ref) async {
+  ref.watch(revisionDatosProvider);
+  final repo = await ref.watch(repositorioProvider.future);
+  return repo.comprasPlaneadas();
 });
 
 final movimientosSemanaProvider =

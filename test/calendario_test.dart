@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:lino/data/modelos/compra_planeada.dart';
 import 'package:lino/data/modelos/cuenta.dart';
 import 'package:lino/data/modelos/gasto_fijo.dart';
 import 'package:lino/dominio/calendario.dart';
@@ -123,6 +124,29 @@ void main() {
       // Noviembre tiene 30 días: el día 31 se recorre al último.
       expect(fijosDelMes.firstWhere((e) => e.titulo == 'Renta').fecha, DateTime(2026, 11, 30));
       expect(fijosDelMes.any((e) => e.titulo == 'Gimnasio'), isFalse);
+    });
+
+    test('marca las compras planeadas en su día', () {
+      final compras = [
+        CompraPlaneada(id: 1, descripcion: 'Audífonos', monto: 150000, fecha: DateTime(2026, 10, 17), creadaEn: DateTime(2026)),
+        CompraPlaneada(id: 2, monto: 90000, fecha: DateTime(2026, 11, 2), creadaEn: DateTime(2026)),
+      ];
+      final eventos = eventosDelMes(
+        anio: 2026,
+        mes: 10,
+        cuentas: const [],
+        gastosFijos: const [],
+        compras: compras,
+      );
+      final planeadas = eventos.where((e) => e.tipo == TipoEvento.compraPlaneada).toList();
+      expect(planeadas.length, 1);
+      expect(planeadas.single.titulo, 'Audífonos');
+      expect(planeadas.single.fecha, DateTime(2026, 10, 17));
+      expect(planeadas.single.monto, 150000);
+      expect(planeadas.single.compra!.id, 1);
+      // Sin descripción se muestra con un nombre genérico.
+      expect(compras[1].titulo, 'Compra planeada');
+      expect(CompraPlaneada.desdeMapa(compras[0].aMapa()).fecha, DateTime(2026, 10, 17));
     });
 
     test('los eventos salen ordenados por fecha', () {

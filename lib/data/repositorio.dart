@@ -1,6 +1,7 @@
 import 'package:sqflite_sqlcipher/sqflite.dart';
 
 import '../core/fechas.dart';
+import 'modelos/compra_planeada.dart';
 import 'modelos/cuenta.dart';
 import 'modelos/gasto_fijo.dart';
 import 'modelos/movimiento.dart';
@@ -129,5 +130,27 @@ class Repositorio {
 
   Future<void> eliminarGastoFijo(int id) async {
     await _db.delete('gastos_fijos', where: 'id = ?', whereArgs: [id]);
+  }
+
+  // ------------------------------------------------------ Compras planeadas
+
+  Future<List<CompraPlaneada>> comprasPlaneadas() async {
+    final filas = await _db.query('compras_planeadas', orderBy: 'fecha, id');
+    return filas.map(CompraPlaneada.desdeMapa).toList();
+  }
+
+  Future<int> guardarCompraPlaneada(CompraPlaneada compra) async {
+    final mapa = compra.aMapa();
+    final id = compra.id;
+    if (id == null) {
+      mapa.remove('id');
+      return _db.insert('compras_planeadas', mapa);
+    }
+    await _db.update('compras_planeadas', mapa, where: 'id = ?', whereArgs: [id]);
+    return id;
+  }
+
+  Future<void> eliminarCompraPlaneada(int id) async {
+    await _db.delete('compras_planeadas', where: 'id = ?', whereArgs: [id]);
   }
 }

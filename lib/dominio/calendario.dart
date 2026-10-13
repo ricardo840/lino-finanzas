@@ -1,10 +1,11 @@
 import '../core/fechas.dart';
+import '../data/modelos/compra_planeada.dart';
 import '../data/modelos/cuenta.dart';
 import '../data/modelos/gasto_fijo.dart';
 import 'ciclo_tarjeta.dart';
 
 /// Qué marca un día en el calendario.
-enum TipoEvento { sueldo, corte, limitePago, gastoFijo }
+enum TipoEvento { sueldo, corte, limitePago, gastoFijo, compraPlaneada }
 
 class EventoCalendario {
   const EventoCalendario({
@@ -14,6 +15,7 @@ class EventoCalendario {
     this.detalle = '',
     this.monto,
     this.cuenta,
+    this.compra,
   });
 
   final DateTime fecha;
@@ -27,6 +29,9 @@ class EventoCalendario {
 
   /// Tarjeta del corte o del pago.
   final Cuenta? cuenta;
+
+  /// Compra planeada que originó el evento.
+  final CompraPlaneada? compra;
 }
 
 /// Días que muestra la cuadrícula de un mes: semanas completas de lunes a
@@ -42,7 +47,7 @@ List<DateTime> diasDeCuadricula(int anio, int mes) {
 }
 
 /// Eventos de un mes: domingos de sueldo, cortes y fechas límite de cada
-/// tarjeta y gastos fijos activos, ordenados por fecha.
+/// tarjeta, gastos fijos activos y compras planeadas, ordenados por fecha.
 ///
 /// El pago de una tarjeta lleva monto solo cuando es su próxima fecha límite
 /// (con [hoy]) y tiene deuda; el sueldo, cuando se conoce el [sueldoHabitual].
@@ -51,6 +56,7 @@ List<EventoCalendario> eventosDelMes({
   required int mes,
   required List<CuentaConSaldo> cuentas,
   required List<GastoFijo> gastosFijos,
+  List<CompraPlaneada> compras = const [],
   DateTime? hoy,
   int sueldoHabitual = 0,
 }) {
@@ -124,6 +130,18 @@ List<EventoCalendario> eventosDelMes({
       }
       corte = ciclo.proximoCorte(sumarDias(corte, 1));
     }
+  }
+
+  for (final compra in compras) {
+    if (!delMes(soloFecha(compra.fecha))) continue;
+    eventos.add(EventoCalendario(
+      fecha: soloFecha(compra.fecha),
+      tipo: TipoEvento.compraPlaneada,
+      titulo: compra.titulo,
+      detalle: 'Compra planeada',
+      monto: compra.monto,
+      compra: compra,
+    ));
   }
 
   eventos.sort((a, b) {

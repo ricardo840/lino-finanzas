@@ -11,7 +11,18 @@ import '../core/seguridad/almacen_seguro.dart';
 /// deriva del PIN para que el desbloqueo con huella funcione y cambiar el PIN
 /// no obligue a recifrar la base.
 class BaseDatos {
-  static const int version = 2;
+  static const int version = 3;
+
+  static const String _tablaComprasPlaneadas = '''
+    CREATE TABLE compras_planeadas (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      descripcion TEXT NOT NULL DEFAULT '',
+      monto INTEGER NOT NULL CHECK (monto > 0),
+      fecha TEXT NOT NULL,
+      cuenta_id INTEGER REFERENCES cuentas(id) ON DELETE SET NULL,
+      creada_en TEXT NOT NULL
+    )
+  ''';
   static const String _kLlave = 'bd_llave';
   static const String _archivo = 'lino.db';
 
@@ -89,6 +100,7 @@ class BaseDatos {
         creado_en TEXT NOT NULL
       )
     ''');
+    lote.execute(_tablaComprasPlaneadas);
     lote.execute('CREATE INDEX idx_movimientos_fecha ON movimientos(fecha)');
     lote.execute('CREATE INDEX idx_movimientos_cuenta ON movimientos(cuenta_id)');
     lote.execute('CREATE INDEX idx_movimientos_destino ON movimientos(cuenta_destino_id)');
@@ -102,6 +114,10 @@ class BaseDatos {
       await db.execute('ALTER TABLE cuentas ADD COLUMN periodo_dias INTEGER');
       await db.execute('ALTER TABLE cuentas ADD COLUMN ultimo_corte TEXT');
       await db.execute('ALTER TABLE cuentas ADD COLUMN plazo_pago_dias INTEGER');
+    }
+    if (anterior < 3) {
+      // Versión 3: compras planeadas desde el simulador.
+      await db.execute(_tablaComprasPlaneadas);
     }
   }
 }

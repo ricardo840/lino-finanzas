@@ -3,20 +3,25 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/fechas.dart';
 import '../../../core/formato.dart';
+import '../../../data/modelos/compra_planeada.dart';
 import '../../../dominio/calendario.dart';
 import '../../../estado/datos.dart';
 import '../../../estado/navegacion.dart';
 import '../../tema/contexto.dart';
 import '../../tema/lino_tema.dart';
 import '../../widgets/comunes.dart';
+import '../../widgets/dialogos.dart';
 import '../../widgets/monto_texto.dart';
+import '../../widgets/paginas.dart';
 import '../../widgets/vidrio.dart';
+import '../movimientos/movimiento_form_pantalla.dart';
 
 Color _colorDe(TipoEvento tipo, LinoTema tema) => switch (tipo) {
       TipoEvento.sueldo => tema.positivo,
       TipoEvento.corte => tema.acento,
       TipoEvento.limitePago => tema.negativo,
       TipoEvento.gastoFijo => tema.advertencia,
+      TipoEvento.compraPlaneada => tema.texto,
     };
 
 IconData _iconoDe(TipoEvento tipo) => switch (tipo) {
@@ -24,6 +29,7 @@ IconData _iconoDe(TipoEvento tipo) => switch (tipo) {
       TipoEvento.corte => CupertinoIcons.scissors,
       TipoEvento.limitePago => CupertinoIcons.creditcard,
       TipoEvento.gastoFijo => CupertinoIcons.pin,
+      TipoEvento.compraPlaneada => CupertinoIcons.bag,
     };
 
 String _nombreDe(TipoEvento tipo) => switch (tipo) {
@@ -31,6 +37,7 @@ String _nombreDe(TipoEvento tipo) => switch (tipo) {
       TipoEvento.corte => 'Corte',
       TipoEvento.limitePago => 'Pago de tarjeta',
       TipoEvento.gastoFijo => 'Gasto fijo',
+      TipoEvento.compraPlaneada => 'Compra planeada',
     };
 
 /// Calendario del mes con los cortes y pagos de las tarjetas, los gastos
@@ -71,16 +78,51 @@ class _CalendarioVistaState extends ConsumerState<CalendarioVista> {
     ref.read(vistaPlanearProvider.notifier).ver(VistaPlanear.simulador);
   }
 
+  /// Una compra planeada se puede registrar como gasto o quitar del calendario.
+  Future<void> _opcionesDeCompra(CompraPlaneada compra) async {
+    final id = compra.id;
+    if (id == null) return;
+    final registrar = await elegirOpcion<bool>(
+      context,
+      titulo: compra.titulo,
+      mensaje: 'Planeada para el ${fechaMedia(compra.fecha)}.',
+      opciones: const [
+        Opcion(true, 'Ya la hice: registrar el gasto'),
+        Opcion(false, 'Quitar del calendario'),
+      ],
+    );
+    if (registrar == null || !mounted) return;
+    if (registrar) {
+      final hoy = soloFecha(DateTime.now());
+      final guardado = await abrirPantalla<bool>(
+        context,
+        MovimientoFormPantalla(
+          montoInicial: compra.monto,
+          cuentaInicialId: compra.cuentaId,
+          descripcionInicial: compra.descripcion,
+          fechaInicial: compra.fecha.isAfter(hoy) ? hoy : compra.fecha,
+        ),
+        modal: true,
+      );
+      if (guardado != true) return;
+    }
+    await ref.escribir((repo) => repo.eliminarCompraPlaneada(id));
+  }
+
   @override
   Widget build(BuildContext context) {
     final tema = context.tema;
     final cuentas = ref.watch(cuentasProvider);
     final fijos = ref.watch(gastosFijosProvider);
-    final error = cuentas.error ?? fijos.error;
+    final compras = ref.watch(comprasPlaneadasProvider);
+    final error = cuentas.error ?? fijos.error ?? compras.error;
     if (error != null) return ErrorDatos(error);
     final listaCuentas = cuentas.valueOrNull;
     final listaFijos = fijos.valueOrNull;
-    if (listaCuentas == null || listaFijos == null) return const Cargando();
+    final listaCompras = compras.valueOrNull;
+    if (listaCuentas == null || listaFijos == null || listaCompras == null) {
+      return const Cargando();
+    }
 
     final hoy = soloFecha(DateTime.now());
     // Se calculan los dos meses vecinos para marcar también los días que se
@@ -92,6 +134,7 @@ class _CalendarioVistaState extends ConsumerState<CalendarioVista> {
           mes: _mes.month + desplazo,
           cuentas: listaCuentas,
           gastosFijos: listaFijos,
+          compras: listaCompras,
           hoy: hoy,
         ),
     ];
@@ -191,7 +234,13 @@ class _CalendarioVistaState extends ConsumerState<CalendarioVista> {
               children: [
                 for (var i = 0; i < delDia.length; i++) ...[
                   if (i > 0) Container(height: 0.5, color: tema.bordeVidrio),
-                  _FilaEvento(evento: delDia[i]),
+                  if (delDia[i].compra case final compra?)
+                    Presionable(
+                      onTap: () => _opcionesDeCompra(compra),
+                      child: _FilaEvento(evento: delDia[i]),
+                    )
+                  else
+                    _FilaEvento(evento: delDia[i]),
                 ],
               ],
             ),

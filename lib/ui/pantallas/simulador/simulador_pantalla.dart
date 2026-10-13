@@ -5,6 +5,7 @@ import '../../../core/fechas.dart';
 import '../../../core/formato.dart';
 import '../../../data/modelos/compra_planeada.dart';
 import '../../../dominio/simulador_compra.dart';
+import '../../../estado/ajustes.dart';
 import '../../../estado/datos.dart';
 import '../../../estado/navegacion.dart';
 import '../../tema/contexto.dart';
@@ -233,6 +234,8 @@ class _SimuladorVistaState extends ConsumerState<SimuladorVista> {
     final tema = context.tema;
     final rec = r.recomendacion;
     final credito = rec.credito;
+    final apartar = rec.apartarPorSueldo;
+    final sueldoHabitual = ref.watch(ajustesProvider.select((a) => a.sueldoHabitual));
     final (IconData icono, Color color) = switch (rec.metodo) {
       MetodoSugerido.credito => (CupertinoIcons.creditcard_fill, tema.acento),
       MetodoSugerido.esperar => (CupertinoIcons.clock, tema.advertencia),
@@ -279,6 +282,11 @@ class _SimuladorVistaState extends ConsumerState<SimuladorVista> {
                     Expanded(child: Text(razon, style: tema.cuerpo.copyWith(fontSize: 14))),
                   ],
                 ),
+              ),
+            if (apartar != null && sueldoHabitual > 0)
+              Text(
+                'Apartar eso es el ${porcentaje(apartar * 100 / sueldoHabitual)} de tu sueldo habitual.',
+                style: tema.secundario,
               ),
           ],
         ),

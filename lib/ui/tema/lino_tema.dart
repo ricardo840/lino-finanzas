@@ -131,15 +131,34 @@ class LinoTema {
       );
 }
 
-/// Pone el tema activo al alcance de cualquier widget con `context.tema`.
+/// Pone el tema activo al alcance de cualquier widget con `context.tema`,
+/// junto con las preferencias de interfaz que los widgets necesitan sin
+/// depender de Riverpod.
 class LinoTemaScope extends InheritedWidget {
-  const LinoTemaScope({super.key, required this.tema, required super.child});
+  const LinoTemaScope({
+    super.key,
+    required this.tema,
+    this.reducirDesenfoque = false,
+    this.vibracion = true,
+    required super.child,
+  });
 
   final LinoTema tema;
 
-  static LinoTema? maybeOf(BuildContext context) =>
-      context.dependOnInheritedWidgetOfExactType<LinoTemaScope>()?.tema;
+  /// Los paneles de vidrio se dibujan sin desenfoque.
+  final bool reducirDesenfoque;
+
+  /// Respuesta háptica al tocar.
+  final bool vibracion;
+
+  static LinoTemaScope? alcanceDe(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<LinoTemaScope>();
+
+  static LinoTema? maybeOf(BuildContext context) => alcanceDe(context)?.tema;
 
   @override
-  bool updateShouldNotify(LinoTemaScope oldWidget) => oldWidget.tema != tema;
+  bool updateShouldNotify(LinoTemaScope oldWidget) =>
+      oldWidget.tema != tema ||
+      oldWidget.reducirDesenfoque != reducirDesenfoque ||
+      oldWidget.vibracion != vibracion;
 }

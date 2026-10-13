@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/formato.dart';
@@ -84,7 +83,7 @@ class _BloqueoPantallaState extends ConsumerState<BloqueoPantalla> {
     setState(() => _verificando = true);
     final resultado = await ref.read(authProvider.notifier).ingresarPin(_pin);
     if (!mounted || resultado.correcto) return;
-    unawaited(HapticFeedback.heavyImpact());
+    context.vibrarError();
     setState(() {
       _verificando = false;
       _pin = '';

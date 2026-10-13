@@ -1,5 +1,4 @@
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/services.dart';
 
 import '../tema/contexto.dart';
 import 'vidrio.dart';
@@ -62,7 +61,7 @@ class BarraIsla extends StatelessWidget {
                         pestana: pestanas[i],
                         activa: i == indice,
                         onTap: () {
-                          HapticFeedback.selectionClick();
+                          context.vibrarToque();
                           alTocar(i);
                         },
                       ),

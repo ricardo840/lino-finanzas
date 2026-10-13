@@ -135,6 +135,9 @@ final List<LinoTema> temasLino = [
 
 const String temaPorDefectoId = 'medianoche';
 
+/// Tema claro que se usa de día cuando se sigue al sistema.
+const String temaClaroPorDefectoId = 'invierno';
+
 LinoTema temaPorId(String id) =>
     temasLino.firstWhere((t) => t.id == id, orElse: () => temasLino.first);
 

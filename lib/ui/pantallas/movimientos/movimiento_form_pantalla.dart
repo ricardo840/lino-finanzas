@@ -5,6 +5,7 @@ import '../../../core/fechas.dart';
 import '../../../core/formato.dart';
 import '../../../data/modelos/cuenta.dart';
 import '../../../data/modelos/movimiento.dart';
+import '../../../estado/ajustes.dart';
 import '../../../estado/datos.dart';
 import '../../categorias.dart';
 import '../../tema/contexto.dart';
@@ -188,9 +189,12 @@ class _MovimientoFormPantallaState extends ConsumerState<MovimientoFormPantalla>
     final tema = context.tema;
     final cuentas = ref.watch(cuentasProvider).valueOrNull ?? const <CuentaConSaldo>[];
 
-    // Si es nuevo y no se ha elegido cuenta, se propone la primera de débito.
+    // Si es nuevo y no se ha elegido cuenta, se propone la predeterminada de
+    // Ajustes o, si no hay, la primera de débito o efectivo.
     if (_cuentaId == null && cuentas.isNotEmpty) {
-      final sugerida = cuentas.firstWhere((c) => c.cuenta.esLiquida, orElse: () => cuentas.first);
+      final preferida = ref.watch(ajustesProvider.select((a) => a.cuentaPredeterminadaId));
+      final sugerida = cuentas.where((c) => c.cuenta.id == preferida).firstOrNull ??
+          cuentas.firstWhere((c) => c.cuenta.esLiquida, orElse: () => cuentas.first);
       _cuentaId = sugerida.cuenta.id;
     }
 

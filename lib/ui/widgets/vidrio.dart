@@ -48,7 +48,7 @@ class PanelVidrio extends StatelessWidget {
     );
     Widget panel = ClipRRect(
       borderRadius: bordes,
-      child: desenfoque
+      child: desenfoque && !context.reducirDesenfoque
           ? BackdropFilter(
               filter: ui.ImageFilter.blur(sigmaX: 18, sigmaY: 18),
               child: contenido,

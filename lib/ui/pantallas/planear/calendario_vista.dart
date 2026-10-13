@@ -5,6 +5,7 @@ import '../../../core/fechas.dart';
 import '../../../core/formato.dart';
 import '../../../data/modelos/compra_planeada.dart';
 import '../../../dominio/calendario.dart';
+import '../../../estado/ajustes.dart';
 import '../../../estado/datos.dart';
 import '../../../estado/navegacion.dart';
 import '../../tema/contexto.dart';
@@ -115,6 +116,7 @@ class _CalendarioVistaState extends ConsumerState<CalendarioVista> {
     final cuentas = ref.watch(cuentasProvider);
     final fijos = ref.watch(gastosFijosProvider);
     final compras = ref.watch(comprasPlaneadasProvider);
+    final sueldoHabitual = ref.watch(ajustesProvider.select((a) => a.sueldoHabitual));
     final error = cuentas.error ?? fijos.error ?? compras.error;
     if (error != null) return ErrorDatos(error);
     final listaCuentas = cuentas.valueOrNull;
@@ -136,6 +138,7 @@ class _CalendarioVistaState extends ConsumerState<CalendarioVista> {
           gastosFijos: listaFijos,
           compras: listaCompras,
           hoy: hoy,
+          sueldoHabitual: sueldoHabitual,
         ),
     ];
     List<EventoCalendario> eventosDe(DateTime dia) =>

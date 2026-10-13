@@ -1,5 +1,4 @@
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/services.dart';
 
 import '../tema/contexto.dart';
 import 'vidrio.dart';
@@ -66,7 +65,7 @@ class TecladoPin extends StatelessWidget {
           digito: digito,
           onTap: habilitado
               ? () {
-                  HapticFeedback.selectionClick();
+                  context.vibrarToque();
                   alDigito(digito);
                 }
               : null,

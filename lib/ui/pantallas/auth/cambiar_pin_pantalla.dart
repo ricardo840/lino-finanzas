@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/formato.dart';
@@ -46,7 +45,7 @@ class _CambiarPinPantallaState extends ConsumerState<CambiarPinPantalla> {
   }
 
   void _marcarError(String mensaje, {_Paso? volverA}) {
-    unawaited(HapticFeedback.heavyImpact());
+    context.vibrarError();
     setState(() {
       _ocupado = false;
       _error = true;

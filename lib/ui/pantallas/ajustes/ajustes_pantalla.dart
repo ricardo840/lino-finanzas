@@ -1,8 +1,11 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/formato.dart';
+import '../../../data/modelos/cuenta.dart';
 import '../../../estado/ajustes.dart';
 import '../../../estado/auth.dart';
+import '../../../estado/datos.dart';
 import '../../../estado/servicios.dart';
 import '../../tema/contexto.dart';
 import '../../widgets/campos.dart';
@@ -45,11 +48,55 @@ class AjustesPantalla extends ConsumerWidget {
     if (segundos != null) await ref.read(ajustesProvider.notifier).cambiarBloqueo(segundos);
   }
 
+  Future<void> _cambiarCuenta(
+    BuildContext context,
+    WidgetRef ref,
+    List<CuentaConSaldo> cuentas,
+    int? actual,
+  ) async {
+    final elegida = await elegirOpcion<int>(
+      context,
+      titulo: 'Cuenta predeterminada',
+      mensaje: 'Es la que se propone al registrar un movimiento.',
+      opciones: [
+        Opcion(-1, 'Ninguna', seleccionada: actual == null),
+        for (final c in cuentas)
+          Opcion(c.cuenta.id!, c.cuenta.nombreCompleto, seleccionada: c.cuenta.id == actual),
+      ],
+    );
+    if (elegida == null) return;
+    await ref.read(ajustesProvider.notifier).cambiarCuentaPredeterminada(elegida < 0 ? null : elegida);
+  }
+
+  Future<void> _cambiarSueldo(BuildContext context, WidgetRef ref, int actual) async {
+    final centavos = await pedirMonto(
+      context,
+      titulo: 'Sueldo habitual',
+      mensaje: 'Lo que recibes normalmente cada domingo. Sirve para estimar en el '
+          'calendario y el simulador; no cambia tu presupuesto.',
+      inicial: actual,
+    );
+    if (centavos != null) await ref.read(ajustesProvider.notifier).cambiarSueldoHabitual(centavos);
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final tema = context.tema;
     final ajustes = ref.watch(ajustesProvider);
     final biometria = ref.watch(authProvider.select((a) => a.biometriaDisponible));
+    final cuentas = ref.watch(cuentasProvider).valueOrNull ?? const <CuentaConSaldo>[];
+    final ajustesNotifier = ref.read(ajustesProvider.notifier);
+
+    String nombreCuenta() {
+      for (final c in cuentas) {
+        if (c.cuenta.id == ajustes.cuentaPredeterminadaId) return c.cuenta.nombreCompleto;
+      }
+      return 'Ninguna';
+    }
+
+    final sueldo = ajustes.sueldoHabitual <= 0
+        ? 'Sin definir'
+        : (ajustes.privacidad ? '\$ •••••' : formatoDinero(ajustes.sueldoHabitual, conCentavos: false));
 
     return PaginaPestana(
       titulo: 'Ajustes',
@@ -59,9 +106,23 @@ class AjustesPantalla extends ConsumerWidget {
           filas: [
             FilaSelector(
               etiqueta: 'Tema',
-              valor: tema.nombre,
+              valor: ajustes.temaAutomatico ? 'Automático' : tema.nombre,
               icono: CupertinoIcons.paintbrush,
               onTap: () => abrirPantalla<void>(context, const TemasPantalla()),
+            ),
+            FilaInterruptor(
+              etiqueta: 'Reducir desenfoque',
+              descripcion: 'Quita el efecto de vidrio esmerilado. Ayuda en teléfonos lentos.',
+              icono: CupertinoIcons.drop,
+              valor: ajustes.reducirDesenfoque,
+              onChanged: ajustesNotifier.cambiarReducirDesenfoque,
+            ),
+            FilaInterruptor(
+              etiqueta: 'Vibración al tocar',
+              descripcion: 'En el teclado del PIN y las pestañas.',
+              icono: CupertinoIcons.dot_radiowaves_left_right,
+              valor: ajustes.vibracion,
+              onChanged: ajustesNotifier.cambiarVibracion,
             ),
           ],
         ),
@@ -74,7 +135,14 @@ class AjustesPantalla extends ConsumerWidget {
               descripcion: 'Oculta los montos en todas las pantallas.',
               icono: CupertinoIcons.eye_slash,
               valor: ajustes.privacidad,
-              onChanged: (v) => ref.read(ajustesProvider.notifier).cambiarPrivacidad(v),
+              onChanged: ajustesNotifier.cambiarPrivacidad,
+            ),
+            FilaInterruptor(
+              etiqueta: 'Abrir con montos ocultos',
+              descripcion: 'Activa el modo privacidad cada vez que la app se abre o se bloquea.',
+              icono: CupertinoIcons.eye_slash_fill,
+              valor: ajustes.ocultarAlAbrir,
+              onChanged: ajustesNotifier.cambiarOcultarAlAbrir,
             ),
           ],
         ),
@@ -114,6 +182,18 @@ class AjustesPantalla extends ConsumerWidget {
               valor: '',
               icono: CupertinoIcons.pin,
               onTap: () => abrirPantalla<void>(context, const GastosFijosPantalla()),
+            ),
+            FilaSelector(
+              etiqueta: 'Cuenta predeterminada',
+              valor: nombreCuenta(),
+              icono: CupertinoIcons.creditcard,
+              onTap: () => _cambiarCuenta(context, ref, cuentas, ajustes.cuentaPredeterminadaId),
+            ),
+            FilaSelector(
+              etiqueta: 'Sueldo habitual',
+              valor: sueldo,
+              icono: CupertinoIcons.briefcase,
+              onTap: () => _cambiarSueldo(context, ref, ajustes.sueldoHabitual),
             ),
           ],
         ),

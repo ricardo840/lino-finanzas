@@ -14,9 +14,15 @@ class TemasPantalla extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final actual = ref.watch(ajustesProvider.select((a) => a.temaId));
+    final ajustes = ref.watch(ajustesProvider);
+    final automatico = ajustes.temaAutomatico;
     final oscuros = temasLino.where((t) => t.esOscuro).toList();
     final claros = temasLino.where((t) => !t.esOscuro).toList();
+
+    // Siguiendo al sistema se elige un tema por grupo: el de noche y el de día.
+    bool elegido(LinoTema t) => automatico
+        ? t.id == (t.esOscuro ? ajustes.temaOscuroId : ajustes.temaClaroId)
+        : t.id == ajustes.temaId;
 
     Widget cuadricula(List<LinoTema> temas) => GridView.count(
           crossAxisCount: 2,
@@ -32,7 +38,7 @@ class TemasPantalla extends ConsumerWidget {
             for (final t in temas)
               _MuestraTema(
                 tema: t,
-                seleccionado: t.id == actual,
+                seleccionado: elegido(t),
                 onTap: () => ref.read(ajustesProvider.notifier).cambiarTema(t.id),
               ),
           ],
@@ -41,10 +47,22 @@ class TemasPantalla extends ConsumerWidget {
     return PaginaSecundaria(
       titulo: 'Tema',
       hijos: [
-        const Etiqueta('Oscuros'),
+        GrupoFilas(
+          filas: [
+            FilaInterruptor(
+              etiqueta: 'Seguir al sistema',
+              descripcion: 'Usa un tema claro o uno oscuro según el modo de tu teléfono.',
+              icono: CupertinoIcons.circle_lefthalf_fill,
+              valor: automatico,
+              onChanged: ref.read(ajustesProvider.notifier).cambiarTemaAutomatico,
+            ),
+          ],
+        ),
+        const SizedBox(height: 18),
+        Etiqueta(automatico ? 'Oscuros: elige el de noche' : 'Oscuros'),
         cuadricula(oscuros),
         const SizedBox(height: 20),
-        const Etiqueta('Claros de temporada'),
+        Etiqueta(automatico ? 'Claros: elige el de día' : 'Claros de temporada'),
         cuadricula(claros),
       ],
     );

@@ -1,8 +1,11 @@
 # Lino — mejoras tras la primera prueba (Fase 1.5)
 
 Observaciones del usuario del 12 de octubre de 2026 después de probar la app
-en su teléfono, reescritas como instrucciones listas para programar. El orden
-y el estado de cada una están en `docs/PLAN.md`; aquí va el detalle.
+en su teléfono, reescritas como instrucciones listas para programar.
+
+**Estado: todas hechas el 12 de octubre de 2026** (M1 a M10). Lo que quedó
+fuera de cada una está en "Siguientes pasos" de `docs/PLAN.md`. Este archivo
+se conserva como registro de qué se pidió y con qué criterio se dio por bueno.
 
 ## Cómo escribir una observación
 

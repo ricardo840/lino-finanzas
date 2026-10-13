@@ -56,10 +56,26 @@ class _LinoAppState extends ConsumerState<LinoApp> with WidgetsBindingObserver {
     }
   }
 
+  /// El teléfono cambió entre modo claro y oscuro (para el tema automático).
+  @override
+  void didChangePlatformBrightness() {
+    ref
+        .read(brilloSistemaProvider.notifier)
+        .fijar(WidgetsBinding.instance.platformDispatcher.platformBrightness);
+  }
+
   @override
   Widget build(BuildContext context) {
     final tema = ref.watch(temaProvider);
     final fase = ref.watch(authProvider.select((a) => a.fase));
+    final reducirDesenfoque = ref.watch(ajustesProvider.select((a) => a.reducirDesenfoque));
+    final vibracion = ref.watch(ajustesProvider.select((a) => a.vibracion));
+    // Con "Abrir con montos ocultos", cada bloqueo vuelve a ocultarlos.
+    ref.listen<FaseAuth>(authProvider.select((a) => a.fase), (_, nueva) {
+      if (nueva == FaseAuth.bloqueada && ref.read(ajustesProvider).ocultarAlAbrir) {
+        ref.read(ajustesProvider.notifier).cambiarPrivacidad(true);
+      }
+    });
 
     return CupertinoApp(
       title: 'Lino',
@@ -73,6 +89,8 @@ class _LinoAppState extends ConsumerState<LinoApp> with WidgetsBindingObserver {
       ],
       builder: (context, navegador) => LinoTemaScope(
         tema: tema,
+        reducirDesenfoque: reducirDesenfoque,
+        vibracion: vibracion,
         child: AnnotatedRegion<SystemUiOverlayStyle>(
           value: (tema.esOscuro ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark).copyWith(
             statusBarColor: const Color(0x00000000),

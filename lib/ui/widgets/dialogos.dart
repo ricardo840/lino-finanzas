@@ -1,6 +1,8 @@
 import 'package:flutter/cupertino.dart';
 
+import '../../core/formato.dart';
 import '../tema/contexto.dart';
+import 'campos.dart';
 
 /// Pregunta sí/no. Regresa true solo si el usuario confirma.
 Future<bool> confirmar(
@@ -54,6 +56,100 @@ Future<void> avisar(BuildContext context, {required String titulo, required Stri
       ],
     ),
   );
+}
+
+/// Pide un monto en un diálogo. Regresa los centavos (0 si se dejó vacío) o
+/// null si se canceló.
+Future<int?> pedirMonto(
+  BuildContext context, {
+  required String titulo,
+  String? mensaje,
+  int inicial = 0,
+}) {
+  return showCupertinoDialog<int>(
+    context: context,
+    builder: (_) => _DialogoMonto(titulo: titulo, mensaje: mensaje, inicial: inicial),
+  );
+}
+
+class _DialogoMonto extends StatefulWidget {
+  const _DialogoMonto({required this.titulo, required this.mensaje, required this.inicial});
+
+  final String titulo;
+  final String? mensaje;
+  final int inicial;
+
+  @override
+  State<_DialogoMonto> createState() => _DialogoMontoState();
+}
+
+class _DialogoMontoState extends State<_DialogoMonto> {
+  late final _monto = TextEditingController(
+    text: widget.inicial > 0 ? montoEditable(widget.inicial) : '',
+  );
+  bool _invalido = false;
+
+  @override
+  void dispose() {
+    _monto.dispose();
+    super.dispose();
+  }
+
+  void _guardar() {
+    final texto = _monto.text.trim();
+    final centavos = texto.isEmpty ? 0 : parsearDinero(texto);
+    if (centavos == null) {
+      setState(() => _invalido = true);
+      return;
+    }
+    Navigator.of(context).pop(centavos);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final tema = context.tema;
+    final mensaje = widget.mensaje;
+    return CupertinoAlertDialog(
+      title: Text(widget.titulo),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (mensaje != null)
+            Padding(padding: const EdgeInsets.only(top: 6), child: Text(mensaje)),
+          const SizedBox(height: 14),
+          CupertinoTextField(
+            controller: _monto,
+            autofocus: true,
+            placeholder: '0.00',
+            textAlign: TextAlign.center,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            inputFormatters: formatoMonto,
+            prefix: const Padding(padding: EdgeInsets.only(left: 10), child: Text('\$')),
+            onChanged: (_) {
+              if (_invalido) setState(() => _invalido = false);
+            },
+            onSubmitted: (_) => _guardar(),
+          ),
+          if (_invalido)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text('Revisa el monto.', style: TextStyle(color: tema.negativo)),
+            ),
+        ],
+      ),
+      actions: [
+        CupertinoDialogAction(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancelar'),
+        ),
+        CupertinoDialogAction(
+          isDefaultAction: true,
+          onPressed: _guardar,
+          child: const Text('Guardar'),
+        ),
+      ],
+    );
+  }
 }
 
 class Opcion<T> {

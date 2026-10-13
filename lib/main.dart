@@ -15,7 +15,9 @@ Future<void> main() async {
   // Se leen los ajustes antes de arrancar para pintar el tema correcto desde
   // el primer cuadro.
   final almacen = AlmacenSeguroDispositivo();
-  final ajustes = await AlmacenAjustes(almacen).cargar();
+  final guardados = await AlmacenAjustes(almacen).cargar();
+  // Con "Abrir con montos ocultos" la app arranca en modo privacidad.
+  final ajustes = guardados.ocultarAlAbrir ? guardados.copyWith(privacidad: true) : guardados;
 
   runApp(
     ProviderScope(

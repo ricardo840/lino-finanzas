@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/seguridad/servicio_auth.dart';
@@ -49,7 +48,7 @@ class _CrearPinPantallaState extends ConsumerState<CrearPinPantalla> {
   }
 
   void _marcarError(String mensaje, {bool reiniciar = false}) {
-    unawaited(HapticFeedback.heavyImpact());
+    context.vibrarError();
     setState(() {
       _error = true;
       _mensaje = mensaje;

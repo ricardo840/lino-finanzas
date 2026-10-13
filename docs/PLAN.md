@@ -14,7 +14,7 @@ simulador que recomienda cuándo y cómo pagar una compra.
 | Privacidad | Modo privacidad que oculta todos los montos. |
 | Respaldos | Android no respalda ni traspasa los datos. Desinstalar la app los borra; la exportación llega en la Fase 2. |
 | Diseño | Glassmorfismo, aspecto profesional. **Prohibido usar emojis** en la app y en el código. |
-| Navegación | Cinco pestañas en una isla flotante de vidrio. Cada pestaña abre siempre en su pantalla principal. |
+| Navegación | Cinco pestañas en una isla flotante de vidrio (Inicio, Cuentas, Movimientos, Planear, Ajustes), encabezado en cápsula flotante y botón flotante con texto para registrar. Cada pestaña abre siempre en su pantalla principal. |
 | Temas | Gama personalizable: oscuros (Medianoche, Grafito, Esmeralda, Ámbar, Amatista) y claros de temporada (Primavera, Verano, Otoño, Invierno). |
 | Ícono | La flor de lino: cinco pétalos azules con centro dorado (fuente en `assets/icono/lino.svg`). Nombre visible: **Lino**. |
 | Sueldo | Semanal, cada domingo, monto variable. El sueldo del domingo financia la semana que empieza. |
@@ -45,11 +45,16 @@ simulador que recomienda cuándo y cómo pagar una compra.
 
 ### Tarjetas de crédito (`lib/dominio/ciclo_tarjeta.dart`)
 - Una compra hecha el día del corte entra en ese corte.
-- Fecha límite de pago = siguiente "día de pago" después del corte.
+- Dos formas de ciclo: por día del mes (el corte cae el mismo día) o por días
+  (cada periodo dura N días desde un corte conocido; Plata: 30 y 30).
+- Fecha límite de pago = siguiente "día de pago" después del corte, o el corte
+  más un plazo en días.
 - Días para pagar = fecha límite − fecha de compra. Comprar justo después del
   corte da el máximo de días.
 
 ### Simulador (`lib/dominio/simulador_compra.dart`)
+El usuario da el monto y un rango de fechas; los días de espera son los que hay
+entre el primer día y el último.
 1. Evalúa cada tarjeta en la fecha de compra (días para pagar, crédito
    disponible, domingos de sueldo antes de la fecha límite).
 2. Si el usuario puede esperar y esperar da 7+ días extra (y hoy hay menos de
@@ -86,15 +91,15 @@ lib/
     formato.dart             dinero y fechas en español
     seguridad/               PBKDF2, almacén seguro, ServicioAuth (PIN + huella)
   data/
-    base_datos.dart          SQLCipher, esquema y migraciones
+    base_datos.dart          SQLCipher, esquema (versión 3) y migraciones
     repositorio.dart         todo el SQL
-    modelos/                 Cuenta, Movimiento, GastoFijo
-  dominio/                   lógica pura y probada: resumen semanal, tarjetas, simulador
-  estado/                    proveedores Riverpod (servicios, auth, ajustes, datos)
+    modelos/                 Cuenta, Movimiento, GastoFijo, CompraPlaneada
+  dominio/                   lógica pura y probada: resumen semanal, tarjetas, simulador, calendario
+  estado/                    proveedores Riverpod (servicios, auth, ajustes, datos, navegación)
   ui/
     tema/                    LinoTema, catálogo de temas, context.tema
-    widgets/                 vidrio, fondo, campos, diálogos, teclado de PIN, isla de pestañas...
-    pantallas/               auth, inicio, cuentas, movimientos, simulador, ajustes; shell.dart
+    widgets/                 vidrio, fondo, campos, diálogos, páginas, encabezado, isla, botón flotante...
+    pantallas/               auth, inicio, cuentas, movimientos, planear, simulador, ajustes; shell.dart
 test/                        pruebas de dominio, seguridad y widgets (dobles en apoyo.dart)
 tool/configurar_android.dart ajustes de Android tras `flutter create` (idempotente)
 ```
@@ -106,15 +111,24 @@ tool/configurar_android.dart ajustes de Android tras `flutter create` (idempoten
 - Pestañas (`ui/pantallas/shell.dart`): un `CupertinoTabView` por pestaña y la
   `BarraIsla` flotando encima; su altura se anuncia como margen inferior en
   `MediaQuery`. No se usa `CupertinoTabScaffold`. Los formularios se abren con
-  `abrirPantalla(..., modal: true)` y tapan la isla.
+  `abrirPantalla(..., modal: true)` y tapan la isla. La pestaña abierta está en
+  `pestanaProvider` (`estado/navegacion.dart`), así cualquier pantalla puede
+  mandar a otra.
+- Páginas (`ui/widgets/paginas.dart`): `PaginaPestana` (título grande que se
+  vuelve cápsula flotante al desplazar), `PaginaFormulario` (Cancelar y
+  Guardar) y `PaginaSecundaria` (flecha de regreso). No se usan las barras de
+  navegación de Cupertino.
+- Las preferencias que los widgets necesitan sin Riverpod (reducir desenfoque,
+  vibración) viajan en `LinoTemaScope`; se leen con `context.reducirDesenfoque`
+  y `context.vibrarToque()`.
 - `android/` se genera con `flutter create`; lo que Lino necesita ahí (huella,
   permisos, respaldos, minSdk) lo aplica `tool/configurar_android.dart`.
 
 ## Estado actual (v0.1.0)
 
 Verificado el 12 de octubre de 2026 con Flutter 3.47.1: `flutter analyze`
-limpio, 50 pruebas, APK de depuración y de release, y probado en un Redmi
-Note 13 Pro+ (Android 13). Repositorio: `github.com/ricardo840/lino-finanzas`.
+limpio, 90 pruebas, y probado en un Redmi Note 13 Pro+ (Android 13).
+Repositorio: `github.com/ricardo840/lino-finanzas`.
 
 Hecho:
 - [x] Temas glass (9) con selector y modo privacidad.
@@ -128,6 +142,10 @@ Hecho:
 - [x] Plataforma Android generada y configurada (huella, sin respaldos, minSdk 24).
 - [x] Barra de pestañas en isla flotante.
 - [x] Pruebas de widgets: arranque y bloqueo, formulario de cuenta y pestañas.
+- [x] Fase 1.5 (detalle en `docs/MEJORAS.md`): comas de miles al escribir, 18
+  colores y banco Plata, ciclo de tarjeta por días, botón flotante para
+  registrar, encabezado tipo isla, pestaña Planear con calendario, simulador
+  con rango de fechas y compras planeadas, ajustes nuevos e ícono de flor de lino.
 
 ## Notas para continuar
 
@@ -155,20 +173,11 @@ Pendientes menores detectados (sin corregir):
 
 ## Siguientes pasos
 
-Fase 1.5 — mejoras tras la primera prueba. El detalle de cada una (qué se
-pidió, instrucción y cómo se comprueba) está en `docs/MEJORAS.md`; léelo solo
-al trabajar en ellas. Decidido con el usuario: botón de añadir flotante sobre
-la isla, calendario dentro de una pestaña "Planear" que sustituye a Simulador,
-y el ícono se elige entre propuestas. Orden sugerido:
-- [ ] M3 Comas de miles al escribir montos.
-- [ ] M4 Más colores de cuenta y banco "Plata"; M10 tipo de cuenta más claro.
-- [ ] M1 Ciclo de tarjeta medido en días (Plata: 30 de facturación y 30 de plazo). Migración a la versión 2 de la base.
-- [ ] M5 Botón flotante para registrar en Inicio, Movimientos y Cuentas.
-- [ ] M6 Encabezado tipo isla en todas las pantallas.
-- [ ] M2 Calendario de cortes, pagos, gastos fijos y sueldos en la pestaña Planear.
-- [ ] M8 Simulador con rango de fechas, línea de tiempo y compras planeadas.
-- [ ] M9 Ajustes nuevos (cuenta predeterminada, sueldo habitual, tema automático...).
-- [x] M7 Ícono nuevo: flor de lino, en el ícono de Android y en el logo de la app.
+Pendiente de la Fase 1.5 (quedó fuera a propósito):
+- [ ] Calendario: saldo proyectado por día y registrar un pago desde el evento.
+- [ ] Simulador: avisar si alcanza contando gastos fijos y pagos de otras
+  tarjetas antes de la fecha límite.
+- [ ] Ajustes: categorías personalizadas y borrar todos los datos.
 
 Fase 2
 - [ ] Bloquear capturas de pantalla y la vista previa en "apps recientes" (FLAG_SECURE).

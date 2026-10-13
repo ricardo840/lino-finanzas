@@ -122,12 +122,10 @@ ResultadoSimulacion simularCompra({
       .map((c) => c.cuenta.tasaAnual ?? 0.0)
       .fold<double>(0, max);
 
-  final tarjetas = cuentas
-      .where((c) => c.cuenta.esCredito && c.cuenta.diaCorte != null && c.cuenta.diaPago != null)
-      .toList();
+  final tarjetas = cuentas.where((c) => cicloDe(c.cuenta) != null).toList();
 
   OpcionCredito evaluar(CuentaConSaldo tarjeta, DateTime dia) {
-    final ciclo = CicloTarjeta(diaCorte: tarjeta.cuenta.diaCorte!, diaPago: tarjeta.cuenta.diaPago!);
+    final ciclo = cicloDe(tarjeta.cuenta)!;
     final corte = ciclo.proximoCorte(dia);
     final limite = ciclo.fechaLimitePago(corte);
     final dias = diasEntre(dia, limite);

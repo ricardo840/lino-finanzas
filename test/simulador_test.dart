@@ -70,6 +70,80 @@ void main() {
       // El 31 de oct ya venció; toca la del corte de noviembre.
       expect(ciclo.proximaFechaLimite(DateTime(2026, 10, 31)), DateTime(2026, 11, 30));
     });
+
+    test('plazo en días después del corte', () {
+      const c = CicloTarjeta(diaCorte: 16, plazoPagoDias: 20);
+      expect(c.fechaLimitePago(DateTime(2026, 10, 16)), DateTime(2026, 11, 5));
+      // Del 17 de oct al 6 de dic (corte del 16 de nov más 20 días).
+      expect(c.diasParaPagar(DateTime(2026, 10, 17)), 50);
+      expect(c.descripcion, 'Corte día 16 · 20 días para pagar');
+    });
+  });
+
+  group('CicloTarjeta por días (tarjeta Plata: 30 y 30)', () {
+    final plata = CicloTarjeta.porDias(
+      ultimoCorte: DateTime(2026, 10, 16),
+      periodoDias: 30,
+      plazoPagoDias: 30,
+    );
+
+    test('la compra del día siguiente al corte da el máximo de días', () {
+      expect(plata.proximoCorte(DateTime(2026, 10, 17)), DateTime(2026, 11, 15));
+      expect(plata.fechaLimitePago(DateTime(2026, 11, 15)), DateTime(2026, 12, 15));
+      expect(plata.diasParaPagar(DateTime(2026, 10, 17)), 59);
+    });
+
+    test('el día del corte entra en ese corte', () {
+      expect(plata.proximoCorte(DateTime(2026, 10, 16)), DateTime(2026, 10, 16));
+      expect(plata.diasParaPagar(DateTime(2026, 10, 16)), 30);
+      expect(plata.diasParaPagar(DateTime(2026, 11, 15)), 30);
+    });
+
+    test('los cortes se recorren cada 30 días, antes y después del conocido', () {
+      expect(plata.proximoCorte(DateTime(2026, 10, 10)), DateTime(2026, 10, 16));
+      expect(plata.proximoCorte(DateTime(2026, 9, 10)), DateTime(2026, 9, 16));
+      expect(plata.proximoCorte(DateTime(2026, 12, 1)), DateTime(2026, 12, 15));
+      expect(plata.corteAnterior(DateTime(2026, 10, 20)), DateTime(2026, 10, 16));
+      expect(plata.corteAnterior(DateTime(2026, 10, 15)), DateTime(2026, 9, 16));
+      expect(plata.corteAnterior(DateTime(2026, 11, 15)), DateTime(2026, 11, 15));
+    });
+
+    test('próxima fecha límite pendiente', () {
+      expect(plata.proximaFechaLimite(DateTime(2026, 10, 20)), DateTime(2026, 11, 15));
+      expect(plata.proximaFechaLimite(DateTime(2026, 11, 16)), DateTime(2026, 12, 15));
+      expect(plata.descripcion, 'Corte cada 30 días · 30 para pagar');
+    });
+  });
+
+  group('cicloDe', () {
+    Cuenta tarjeta({int? corte, int? pago, int? periodo, DateTime? ultimo, int? plazo}) => Cuenta(
+          nombre: 'Tarjeta',
+          tipo: TipoCuenta.credito,
+          diaCorte: corte,
+          diaPago: pago,
+          periodoDias: periodo,
+          ultimoCorte: ultimo,
+          plazoPagoDias: plazo,
+          creadaEn: DateTime(2026),
+        );
+
+    test('arma el ciclo según lo capturado', () {
+      expect(cicloDe(tarjeta(corte: 10, pago: 30))!.esPorDias, isFalse);
+      expect(cicloDe(tarjeta(corte: 10, plazo: 20))!.plazoPagoDias, 20);
+      final porDias = cicloDe(tarjeta(periodo: 30, ultimo: DateTime(2026, 10, 16), plazo: 30))!;
+      expect(porDias.esPorDias, isTrue);
+      expect(porDias.diasParaPagar(DateTime(2026, 10, 17)), 59);
+    });
+
+    test('regresa null si faltan fechas o no es crédito', () {
+      expect(cicloDe(tarjeta()), isNull);
+      expect(cicloDe(tarjeta(corte: 10)), isNull);
+      expect(cicloDe(tarjeta(periodo: 30, plazo: 30)), isNull);
+      expect(
+        cicloDe(Cuenta(nombre: 'Débito', tipo: TipoCuenta.debito, diaCorte: 10, diaPago: 30, creadaEn: DateTime(2026))),
+        isNull,
+      );
+    });
   });
 
   group('simularCompra', () {
@@ -127,6 +201,33 @@ void main() {
       );
       expect(r.superaSemana, isTrue);
       expect(r.recomendacion.razones.any((t) => t.startsWith('Supera')), isTrue);
+    });
+
+    test('una tarjeta por días (Plata) compite con las demás', () {
+      final plata = CuentaConSaldo(
+        Cuenta(
+          id: 9,
+          nombre: 'Plata',
+          tipo: TipoCuenta.credito,
+          limiteCredito: 2000000,
+          periodoDias: 30,
+          ultimoCorte: DateTime(2026, 10, 8),
+          plazoPagoDias: 30,
+          creadaEn: DateTime(2026),
+        ),
+        0,
+      );
+      final r = simularCompra(
+        monto: 150000,
+        fecha: viernes,
+        disponibleSemana: 300000,
+        cuentas: [_credito(1, 'Nu', corte: 10, pago: 30), plata, _debito(3, 500000)],
+      );
+      // Comprando el 9 de oct: corte 7 de nov y pago 7 de dic, 59 días.
+      expect(r.recomendacion.metodo, MetodoSugerido.credito);
+      expect(r.recomendacion.credito!.tarjeta.cuenta.nombre, 'Plata');
+      expect(r.recomendacion.credito!.diasParaPagar, 59);
+      expect(r.recomendacion.credito!.limitePago, DateTime(2026, 12, 7));
     });
 
     test('sin fondos ni crédito suficiente', () {

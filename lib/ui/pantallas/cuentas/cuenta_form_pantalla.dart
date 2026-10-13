@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/fechas.dart';
 import '../../../core/formato.dart';
 import '../../../data/modelos/cuenta.dart';
 import '../../../estado/datos.dart';
@@ -13,9 +14,17 @@ import '../../widgets/paginas.dart';
 import '../../widgets/vidrio.dart';
 
 const _bancosFrecuentes = [
-  'Nu', 'BBVA', 'Banorte', 'Santander', 'Banamex', 'HSBC', //
+  'Nu', 'BBVA', 'Banorte', 'Santander', 'Banamex', 'HSBC', 'Plata', //
   'Mercado Pago', 'Hey Banco', 'Stori', 'Klar', 'Spin', 'Didi',
 ];
+
+String _ayudaTipo(TipoCuenta tipo) => switch (tipo) {
+      TipoCuenta.debito => 'Cuenta de banco de la que pagas con tarjeta de débito o transferencia.',
+      TipoCuenta.credito => 'Tarjeta de crédito. Lleva la deuda y sus fechas de corte y de pago.',
+      TipoCuenta.efectivo => 'Dinero que traes en la cartera o guardas en casa.',
+      TipoCuenta.ahorro =>
+        'Dinero apartado que gana una tasa. Lo que pases aquí cuenta como ahorro de la semana.',
+    };
 
 /// Alta y edición de una cuenta.
 class CuentaFormPantalla extends ConsumerStatefulWidget {
@@ -34,14 +43,24 @@ class _CuentaFormPantallaState extends ConsumerState<CuentaFormPantalla> {
   late final TextEditingController _saldo;
   late final TextEditingController _limite;
   late final TextEditingController _tasa;
-  int? _diaCorte;
-  int? _diaPago;
   late int _color;
   bool _guardando = false;
+
+  // Ciclo de la tarjeta de crédito.
+  late bool _cicloPorDias;
+  int? _diaCorte;
+  int? _diaPago;
+  int? _plazoDias;
+  late int _periodoDias;
+  DateTime? _ultimoCorte;
 
   /// true cuando el usuario modificó el campo de saldo. Si no lo toca, al
   /// guardar se conserva el saldo que ya tenía la cuenta.
   bool _saldoEditado = false;
+
+  /// true cuando el usuario eligió un color a mano; ya no se le propone el
+  /// del banco.
+  bool _colorElegido = false;
 
   bool get _editando => widget.existente != null;
 
@@ -59,9 +78,13 @@ class _CuentaFormPantallaState extends ConsumerState<CuentaFormPantalla> {
       text: c?.limiteCredito == null ? '' : montoEditable(c!.limiteCredito!),
     );
     _tasa = TextEditingController(text: c?.tasaAnual == null ? '' : '${c!.tasaAnual}');
+    _color = c?.color ?? 0;
+    _cicloPorDias = c?.periodoDias != null;
     _diaCorte = c?.diaCorte;
     _diaPago = c?.diaPago;
-    _color = c?.color ?? 0;
+    _plazoDias = c?.plazoPagoDias;
+    _periodoDias = c?.periodoDias ?? 30;
+    _ultimoCorte = c?.ultimoCorte;
   }
 
   @override
@@ -72,6 +95,14 @@ class _CuentaFormPantallaState extends ConsumerState<CuentaFormPantalla> {
     _limite.dispose();
     _tasa.dispose();
     super.dispose();
+  }
+
+  /// Al elegir o escribir un banco conocido se propone su color, salvo que ya
+  /// se haya elegido uno a mano o se esté editando una cuenta existente.
+  void _proponerColor(String banco) {
+    if (_colorElegido || _editando) return;
+    final sugerido = colorDeBanco(banco);
+    if (sugerido != null) _color = sugerido;
   }
 
   Future<void> _guardar() async {
@@ -88,13 +119,19 @@ class _CuentaFormPantallaState extends ConsumerState<CuentaFormPantalla> {
       return;
     }
     final esCredito = _tipo == TipoCuenta.credito;
+    final porDias = esCredito && _cicloPorDias;
     int? limite;
     if (esCredito) {
-      if (_diaCorte == null || _diaPago == null) {
+      final faltanFechas = porDias
+          ? _ultimoCorte == null
+          : _diaCorte == null || (_diaPago == null && _plazoDias == null);
+      if (faltanFechas) {
         await avisar(
           context,
           titulo: 'Faltan fechas',
-          mensaje: 'Indica el día de corte y el día límite de pago; el simulador los necesita.',
+          mensaje: porDias
+              ? 'Indica la fecha del último corte; el simulador la necesita.'
+              : 'Indica el día de corte y la fecha límite de pago; el simulador los necesita.',
         );
         return;
       }
@@ -137,8 +174,11 @@ class _CuentaFormPantallaState extends ConsumerState<CuentaFormPantalla> {
       tipo: _tipo,
       saldoInicial: saldoInicial,
       limiteCredito: esCredito ? limite : null,
-      diaCorte: esCredito ? _diaCorte : null,
-      diaPago: esCredito ? _diaPago : null,
+      diaCorte: esCredito && !porDias ? _diaCorte : null,
+      diaPago: esCredito && !porDias && _plazoDias == null ? _diaPago : null,
+      periodoDias: porDias ? _periodoDias : null,
+      ultimoCorte: porDias ? _ultimoCorte : null,
+      plazoPagoDias: !esCredito ? null : (porDias ? _plazoDias ?? 30 : _plazoDias),
       tasaAnual: _tipo == TipoCuenta.ahorro ? tasa : null,
       color: _color,
       creadaEn: existente?.cuenta.creadaEn ?? DateTime.now(),
@@ -166,29 +206,159 @@ class _CuentaFormPantallaState extends ConsumerState<CuentaFormPantalla> {
     Navigator.of(context).pop();
   }
 
-  Future<void> _elegirDia({required bool corte}) async {
-    final actual = corte ? _diaCorte : _diaPago;
+  Future<void> _elegirDiaCorte() async {
     final dia = await elegirNumero(
       context,
-      inicial: actual ?? (corte ? 1 : 20),
+      inicial: _diaCorte ?? 1,
       minimo: 1,
       maximo: 31,
       etiqueta: (n) => 'Día $n',
     );
-    if (dia == null || !mounted) return;
-    setState(() {
-      if (corte) {
-        _diaCorte = dia;
-      } else {
+    if (dia != null && mounted) setState(() => _diaCorte = dia);
+  }
+
+  /// Fecha límite en el ciclo por día del mes: un día fijo o un plazo en días.
+  Future<void> _elegirLimite() async {
+    final forma = await elegirOpcion<bool>(
+      context,
+      titulo: 'Fecha límite de pago',
+      mensaje: 'Revisa tu estado de cuenta: unas tarjetas dan un día fijo y otras un número de días después del corte.',
+      opciones: [
+        Opcion(false, 'Un día fijo del mes', seleccionada: _plazoDias == null && _diaPago != null),
+        Opcion(true, 'Días después del corte', seleccionada: _plazoDias != null),
+      ],
+    );
+    if (forma == null || !mounted) return;
+    if (forma) {
+      final dias = await _elegirDias(inicial: _plazoDias ?? 20, maximo: 60);
+      if (dias != null && mounted) setState(() => _plazoDias = dias);
+    } else {
+      final dia = await elegirNumero(
+        context,
+        inicial: _diaPago ?? 20,
+        minimo: 1,
+        maximo: 31,
+        etiqueta: (n) => 'Día $n',
+      );
+      if (dia == null || !mounted) return;
+      setState(() {
         _diaPago = dia;
-      }
-    });
+        _plazoDias = null;
+      });
+    }
+  }
+
+  Future<int?> _elegirDias({required int inicial, required int maximo, int minimo = 1}) =>
+      elegirNumero(
+        context,
+        inicial: inicial,
+        minimo: minimo,
+        maximo: maximo,
+        etiqueta: (n) => plural(n, 'día', 'días'),
+      );
+
+  Future<void> _elegirUltimoCorte() async {
+    final hoy = soloFecha(DateTime.now());
+    final fecha = await elegirFecha(
+      context,
+      inicial: _ultimoCorte ?? hoy,
+      minima: sumarDias(hoy, -92),
+      maxima: hoy,
+    );
+    if (fecha != null && mounted) setState(() => _ultimoCorte = soloFecha(fecha));
+  }
+
+  List<Widget> _camposCiclo() {
+    final tema = context.tema;
+    return [
+      const SizedBox(height: 18),
+      const Etiqueta('Ciclo de la tarjeta'),
+      CupertinoSlidingSegmentedControl<bool>(
+        groupValue: _cicloPorDias,
+        backgroundColor: tema.campo,
+        thumbColor: tema.vidrioAlto,
+        children: {
+          for (final porDias in const [false, true])
+            porDias: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Text(
+                porDias ? 'Por días' : 'Por día del mes',
+                style: tema.cuerpo.copyWith(fontSize: 14),
+              ),
+            ),
+        },
+        onValueChanged: (porDias) {
+          if (porDias == null) return;
+          setState(() {
+            _cicloPorDias = porDias;
+            if (porDias) _plazoDias ??= 30;
+          });
+        },
+      ),
+      Padding(
+        padding: const EdgeInsets.fromLTRB(4, 8, 4, 10),
+        child: Text(
+          _cicloPorDias
+              ? 'Cada periodo dura un número fijo de días, como en la tarjeta Plata (30 y 30).'
+              : 'El corte cae el mismo día cada mes.',
+          style: tema.secundario,
+        ),
+      ),
+      GrupoFilas(
+        filas: _cicloPorDias
+            ? [
+                FilaSelector(
+                  etiqueta: 'Último corte',
+                  valor: _ultimoCorte == null ? 'Elegir' : fechaConAnio(_ultimoCorte!),
+                  icono: CupertinoIcons.scissors,
+                  onTap: _elegirUltimoCorte,
+                ),
+                FilaSelector(
+                  etiqueta: 'Días de facturación',
+                  valor: plural(_periodoDias, 'día', 'días'),
+                  icono: CupertinoIcons.arrow_2_circlepath,
+                  onTap: () async {
+                    final dias = await _elegirDias(inicial: _periodoDias, minimo: 7, maximo: 62);
+                    if (dias != null && mounted) setState(() => _periodoDias = dias);
+                  },
+                ),
+                FilaSelector(
+                  etiqueta: 'Días para pagar',
+                  valor: plural(_plazoDias ?? 30, 'día', 'días'),
+                  icono: CupertinoIcons.calendar,
+                  onTap: () async {
+                    final dias = await _elegirDias(inicial: _plazoDias ?? 30, maximo: 60);
+                    if (dias != null && mounted) setState(() => _plazoDias = dias);
+                  },
+                ),
+              ]
+            : [
+                FilaSelector(
+                  etiqueta: 'Día de corte',
+                  valor: _diaCorte == null ? 'Elegir' : 'Día $_diaCorte',
+                  icono: CupertinoIcons.scissors,
+                  onTap: _elegirDiaCorte,
+                ),
+                FilaSelector(
+                  etiqueta: 'Fecha límite de pago',
+                  valor: _plazoDias != null
+                      ? '$_plazoDias días después'
+                      : (_diaPago == null ? 'Elegir' : 'Día $_diaPago'),
+                  icono: CupertinoIcons.calendar,
+                  onTap: _elegirLimite,
+                ),
+              ],
+      ),
+    ];
   }
 
   @override
   Widget build(BuildContext context) {
     final tema = context.tema;
     final esCredito = _tipo == TipoCuenta.credito;
+    final sugerirAhorro = !_editando &&
+        (_tipo == TipoCuenta.debito || _tipo == TipoCuenta.efectivo) &&
+        pareceCuentaDeAhorro(_nombre.text);
     return PaginaFormulario(
       titulo: _editando ? 'Editar cuenta' : 'Nueva cuenta',
       guardando: _guardando,
@@ -209,13 +379,17 @@ class _CuentaFormPantallaState extends ConsumerState<CuentaFormPantalla> {
             if (t != null) setState(() => _tipo = t);
           },
         ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(4, 8, 4, 0),
+          child: Text(_ayudaTipo(_tipo), style: tema.secundario),
+        ),
         const SizedBox(height: 18),
         const Etiqueta('Banco'),
         CampoVidrio(
           controller: _banco,
           placeholder: 'Nu, BBVA, Banorte...',
           mayusculas: TextCapitalization.words,
-          onChanged: (_) => setState(() {}),
+          onChanged: (texto) => setState(() => _proponerColor(texto)),
         ),
         const SizedBox(height: 10),
         Wrap(
@@ -224,7 +398,10 @@ class _CuentaFormPantallaState extends ConsumerState<CuentaFormPantalla> {
           children: [
             for (final b in _bancosFrecuentes)
               Presionable(
-                onTap: () => setState(() => _banco.text = b),
+                onTap: () => setState(() {
+                  _banco.text = b;
+                  _proponerColor(b);
+                }),
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
                   decoration: BoxDecoration(
@@ -247,7 +424,27 @@ class _CuentaFormPantallaState extends ConsumerState<CuentaFormPantalla> {
             TipoCuenta.efectivo => 'Cartera',
             TipoCuenta.ahorro => 'Cajita, Apartado...',
           },
+          onChanged: (_) => setState(() {}),
         ),
+        if (sugerirAhorro)
+          Presionable(
+            onTap: () => setState(() => _tipo = TipoCuenta.ahorro),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(4, 10, 4, 0),
+              child: Row(
+                children: [
+                  Icon(CupertinoIcons.percent, size: 16, color: tema.acento),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      '¿Es dinero que tienes apartado? Cambiar a tipo Ahorro',
+                      style: tema.secundario.copyWith(color: tema.acento),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
         const SizedBox(height: 18),
         Etiqueta(esCredito ? 'Deuda actual' : 'Saldo actual'),
         CampoVidrio(
@@ -268,24 +465,7 @@ class _CuentaFormPantallaState extends ConsumerState<CuentaFormPantalla> {
             teclado: const TextInputType.numberWithOptions(decimal: true),
             formatos: formatoMonto,
           ),
-          const SizedBox(height: 18),
-          const Etiqueta('Fechas'),
-          GrupoFilas(
-            filas: [
-              FilaSelector(
-                etiqueta: 'Día de corte',
-                valor: _diaCorte == null ? 'Elegir' : 'Día $_diaCorte',
-                icono: CupertinoIcons.scissors,
-                onTap: () => _elegirDia(corte: true),
-              ),
-              FilaSelector(
-                etiqueta: 'Fecha límite de pago',
-                valor: _diaPago == null ? 'Elegir' : 'Día $_diaPago',
-                icono: CupertinoIcons.calendar,
-                onTap: () => _elegirDia(corte: false),
-              ),
-            ],
-          ),
+          ..._camposCiclo(),
         ],
         if (_tipo == TipoCuenta.ahorro) ...[
           const SizedBox(height: 18),
@@ -306,7 +486,10 @@ class _CuentaFormPantallaState extends ConsumerState<CuentaFormPantalla> {
           children: [
             for (var i = 0; i < paletaCuentas.length; i++)
               Presionable(
-                onTap: () => setState(() => _color = i),
+                onTap: () => setState(() {
+                  _color = i;
+                  _colorElegido = true;
+                }),
                 child: Container(
                   width: 40,
                   height: 40,

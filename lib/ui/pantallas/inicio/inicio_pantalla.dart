@@ -323,9 +323,7 @@ class _TarjetaResumen extends StatelessWidget {
     final colores = coloresCuenta(cuenta.color);
     const blanco = Color(0xFFFFFFFF);
     const blancoSuave = Color(0xCCFFFFFF);
-    final corte = cuenta.diaCorte;
-    final pago = cuenta.diaPago;
-    final ciclo = corte != null && pago != null ? CicloTarjeta(diaCorte: corte, diaPago: pago) : null;
+    final ciclo = cicloDe(cuenta);
 
     return PanelVidrio(
       gradiente: LinearGradient(

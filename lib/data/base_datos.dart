@@ -11,7 +11,7 @@ import '../core/seguridad/almacen_seguro.dart';
 /// deriva del PIN para que el desbloqueo con huella funcione y cambiar el PIN
 /// no obligue a recifrar la base.
 class BaseDatos {
-  static const int version = 1;
+  static const int version = 2;
   static const String _kLlave = 'bd_llave';
   static const String _archivo = 'lino.db';
 
@@ -52,6 +52,9 @@ class BaseDatos {
         limite_credito INTEGER,
         dia_corte INTEGER,
         dia_pago INTEGER,
+        periodo_dias INTEGER,
+        ultimo_corte TEXT,
+        plazo_pago_dias INTEGER,
         tasa_anual REAL,
         color INTEGER NOT NULL DEFAULT 0,
         archivada INTEGER NOT NULL DEFAULT 0,
@@ -92,6 +95,13 @@ class BaseDatos {
     await lote.commit(noResult: true);
   }
 
-  /// Migraciones futuras: agrega un `if (anterior < N)` por versión.
-  static Future<void> _migrar(Database db, int anterior, int nueva) async {}
+  /// Migraciones: un `if (anterior < N)` por versión, en orden.
+  static Future<void> _migrar(Database db, int anterior, int nueva) async {
+    if (anterior < 2) {
+      // Versión 2: ciclo de tarjeta medido en días y plazo de pago en días.
+      await db.execute('ALTER TABLE cuentas ADD COLUMN periodo_dias INTEGER');
+      await db.execute('ALTER TABLE cuentas ADD COLUMN ultimo_corte TEXT');
+      await db.execute('ALTER TABLE cuentas ADD COLUMN plazo_pago_dias INTEGER');
+    }
+  }
 }

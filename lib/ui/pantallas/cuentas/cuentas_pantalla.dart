@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/formato.dart';
 import '../../../data/modelos/cuenta.dart';
+import '../../../dominio/ciclo_tarjeta.dart';
 import '../../../estado/datos.dart';
 import '../../categorias.dart';
 import '../../tema/contexto.dart';
@@ -140,11 +141,7 @@ class _TarjetaCuenta extends StatelessWidget {
     final String detalle;
     switch (c.tipo) {
       case TipoCuenta.credito:
-        final partes = <String>[
-          if (c.diaCorte != null) 'Corte día ${c.diaCorte}',
-          if (c.diaPago != null) 'pago día ${c.diaPago}',
-        ];
-        detalle = partes.isEmpty ? 'Sin fechas de corte y pago' : partes.join(' · ');
+        detalle = cicloDe(c)?.descripcion ?? 'Sin fechas de corte y pago';
       case TipoCuenta.ahorro:
         detalle = c.tasaAnual == null ? 'Sin tasa capturada' : 'Tasa fija ${porcentaje(c.tasaAnual!)} anual';
       case TipoCuenta.debito:

@@ -148,7 +148,36 @@ const List<List<Color>> paletaCuentas = [
   [Color(0xFF64748B), Color(0xFF94A3B8)],
   [Color(0xFF8B5CF6), Color(0xFFEC4899)],
   [Color(0xFF14B8A6), Color(0xFF0EA5E9)],
+  // El color se guarda como posición en esta lista: los nuevos van al final.
+  [Color(0xFF111827), Color(0xFF374151)], // 8 negro
+  [Color(0xFF71717A), Color(0xFFA1A1AA)], // 9 plata
+  [Color(0xFFB91C1C), Color(0xFFEF4444)], // 10 rojo
+  [Color(0xFF7F1D1D), Color(0xFFBE123C)], // 11 vino
+  [Color(0xFFC2410C), Color(0xFFFB923C)], // 12 naranja
+  [Color(0xFF065F46), Color(0xFF10B981)], // 13 verde oscuro
+  [Color(0xFF1E3A8A), Color(0xFF2563EB)], // 14 azul marino
+  [Color(0xFF0F766E), Color(0xFF2DD4BF)], // 15 turquesa
+  [Color(0xFF4C1D95), Color(0xFF7C3AED)], // 16 morado
+  [Color(0xFF92400E), Color(0xFFD97706)], // 17 dorado
 ];
+
+/// Color que se propone al elegir un banco conocido, o null si no hay uno.
+int? colorDeBanco(String banco) => switch (banco.trim().toLowerCase()) {
+      'nu' => 16,
+      'bbva' => 14,
+      'banorte' => 10,
+      'santander' => 11,
+      'banamex' => 1,
+      'hsbc' => 10,
+      'mercado pago' => 1,
+      'hey banco' => 8,
+      'stori' => 15,
+      'klar' => 13,
+      'spin' => 6,
+      'didi' => 12,
+      'plata' => 9,
+      _ => null,
+    };
 
 List<Color> coloresCuenta(int indice) =>
     paletaCuentas[indice.abs() % paletaCuentas.length];

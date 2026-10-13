@@ -1,3 +1,10 @@
+import '../../core/fechas.dart';
+
+/// true si el nombre sugiere dinero apartado ("Ahorro", "Cajita",
+/// "Apartado"...), para proponer el tipo Ahorro al dar de alta la cuenta.
+bool pareceCuentaDeAhorro(String nombre) =>
+    RegExp('ahorr|cajita|apartado|inversi', caseSensitive: false).hasMatch(nombre);
+
 /// Tipos de cuenta que maneja Lino.
 enum TipoCuenta {
   debito('Débito'),
@@ -29,6 +36,9 @@ class Cuenta {
     this.limiteCredito,
     this.diaCorte,
     this.diaPago,
+    this.periodoDias,
+    this.ultimoCorte,
+    this.plazoPagoDias,
     this.tasaAnual,
     this.color = 0,
     this.archivada = false,
@@ -51,6 +61,17 @@ class Cuenta {
 
   /// Solo crédito: día del mes de la fecha límite de pago.
   final int? diaPago;
+
+  /// Solo crédito con ciclo por días: días que dura cada periodo de
+  /// facturación (30 en la tarjeta Plata).
+  final int? periodoDias;
+
+  /// Solo crédito con ciclo por días: fecha de un corte conocido.
+  final DateTime? ultimoCorte;
+
+  /// Solo crédito: días para pagar después del corte. Si es null, la fecha
+  /// límite es [diaPago].
+  final int? plazoPagoDias;
 
   /// Solo ahorro: tasa fija anual en porcentaje (15.0 = 15 %).
   final double? tasaAnual;
@@ -77,6 +98,9 @@ class Cuenta {
         'limite_credito': limiteCredito,
         'dia_corte': diaCorte,
         'dia_pago': diaPago,
+        'periodo_dias': periodoDias,
+        'ultimo_corte': ultimoCorte == null ? null : fechaIso(ultimoCorte!),
+        'plazo_pago_dias': plazoPagoDias,
         'tasa_anual': tasaAnual,
         'color': color,
         'archivada': archivada ? 1 : 0,
@@ -92,6 +116,9 @@ class Cuenta {
         limiteCredito: m['limite_credito'] as int?,
         diaCorte: m['dia_corte'] as int?,
         diaPago: m['dia_pago'] as int?,
+        periodoDias: m['periodo_dias'] as int?,
+        ultimoCorte: DateTime.tryParse((m['ultimo_corte'] as String?) ?? ''),
+        plazoPagoDias: m['plazo_pago_dias'] as int?,
         tasaAnual: (m['tasa_anual'] as num?)?.toDouble(),
         color: (m['color'] as int?) ?? 0,
         archivada: ((m['archivada'] as int?) ?? 0) == 1,

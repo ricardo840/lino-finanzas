@@ -128,7 +128,8 @@ vea 1,500 mientras escribo. Listo cuando 1234567.5 se ve 1,234,567.5."
 - **Instrucción**: con la elegida, regenerar el ícono adaptable de Android
   (`flutter_launcher_icons`) y actualizar `LogoLino` para que coincida dentro
   de la app.
-- **Tamaño**: chico una vez elegido el diseño. No depende de nada.
+- **Hecho**: se eligió la flor de lino. El dibujo fuente es
+  `assets/icono/lino.svg`; `LogoLino` la pinta con los colores del tema.
 
 ## M8. Simulador más claro y más útil
 

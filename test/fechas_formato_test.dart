@@ -53,8 +53,28 @@ void main() {
     });
 
     test('montoEditable', () {
-      expect(montoEditable(123450), '1234.50');
+      expect(montoEditable(123450), '1,234.50');
       expect(montoEditable(8000), '80');
+      // Lo que se muestra al editar se puede volver a leer igual.
+      expect(parsearDinero(montoEditable(123456789)), 123456789);
+    });
+
+    test('formatearMontoEscrito pone las comas de miles', () {
+      expect(formatearMontoEscrito('1500'), '1,500');
+      expect(formatearMontoEscrito('1234567.5'), '1,234,567.5');
+      expect(formatearMontoEscrito('999'), '999');
+      expect(formatearMontoEscrito('1000000'), '1,000,000');
+      expect(formatearMontoEscrito(''), '');
+    });
+
+    test('formatearMontoEscrito limpia lo que no es un monto', () {
+      expect(formatearMontoEscrito('12.345'), '12.34');
+      expect(formatearMontoEscrito('1,2,3,4'), '1,234');
+      expect(formatearMontoEscrito('007'), '7');
+      expect(formatearMontoEscrito('.5'), '0.5');
+      expect(formatearMontoEscrito('12.'), '12.');
+      expect(formatearMontoEscrito('1.2.3'), '1.23');
+      expect(formatearMontoEscrito('abc'), '');
     });
   });
 

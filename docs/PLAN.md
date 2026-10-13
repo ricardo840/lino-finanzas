@@ -16,7 +16,7 @@ simulador que recomienda cuándo y cómo pagar una compra.
 | Diseño | Glassmorfismo, aspecto profesional. **Prohibido usar emojis** en la app y en el código. |
 | Navegación | Cinco pestañas en una isla flotante de vidrio. Cada pestaña abre siempre en su pantalla principal. |
 | Temas | Gama personalizable: oscuros (Medianoche, Grafito, Esmeralda, Ámbar, Amatista) y claros de temporada (Primavera, Verano, Otoño, Invierno). |
-| Ícono | Una "L" sobre vidrio. Nombre visible: **Lino**. |
+| Ícono | La flor de lino: cinco pétalos azules con centro dorado (fuente en `assets/icono/lino.svg`). Nombre visible: **Lino**. |
 | Sueldo | Semanal, cada domingo, monto variable. El sueldo del domingo financia la semana que empieza. |
 | Semana | Lunes a domingo. |
 | Gastos fijos | Los captura el usuario y marca cuáles son fijos (internet, renta...). Se pagan cada domingo (o un día del mes). |
@@ -168,7 +168,7 @@ y el ícono se elige entre propuestas. Orden sugerido:
 - [ ] M2 Calendario de cortes, pagos, gastos fijos y sueldos en la pestaña Planear.
 - [ ] M8 Simulador con rango de fechas, línea de tiempo y compras planeadas.
 - [ ] M9 Ajustes nuevos (cuenta predeterminada, sueldo habitual, tema automático...).
-- [ ] M7 Ícono nuevo (independiente; primero se eligen propuestas).
+- [x] M7 Ícono nuevo: flor de lino, en el ícono de Android y en el logo de la app.
 
 Fase 2
 - [ ] Bloquear capturas de pantalla y la vista previa en "apps recientes" (FLAG_SECURE).

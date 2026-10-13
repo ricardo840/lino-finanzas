@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 
+import '../../core/formato.dart';
 import '../tema/contexto.dart';
 import 'vidrio.dart';
 
@@ -67,10 +68,42 @@ class CampoVidrio extends StatelessWidget {
   }
 }
 
-/// Formateadores para montos: solo dígitos, coma y punto.
-final List<TextInputFormatter> formatoMonto = [
-  FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
-];
+/// Da formato al monto mientras se escribe (comas de miles y dos decimales) y
+/// deja el cursor en su lugar.
+class FormateadorMonto extends TextInputFormatter {
+  const FormateadorMonto();
+
+  static final _significativo = RegExp(r'[0-9.]');
+
+  @override
+  TextEditingValue formatEditUpdate(TextEditingValue anterior, TextEditingValue nuevo) {
+    final texto = formatearMontoEscrito(nuevo.text);
+    final fin = nuevo.selection.end;
+    if (fin < 0) {
+      return TextEditingValue(
+        text: texto,
+        selection: TextSelection.collapsed(offset: texto.length),
+      );
+    }
+    // Se cuentan los dígitos y puntos que quedan antes del cursor y se coloca
+    // después de esa misma cantidad en el texto con comas.
+    final antes = nuevo.text.substring(0, fin.clamp(0, nuevo.text.length));
+    final significativos = _significativo.allMatches(antes).length;
+    var posicion = 0;
+    var vistos = 0;
+    while (posicion < texto.length && vistos < significativos) {
+      if (texto[posicion] != ',') vistos++;
+      posicion++;
+    }
+    return TextEditingValue(
+      text: texto,
+      selection: TextSelection.collapsed(offset: posicion),
+    );
+  }
+}
+
+/// Formateadores para los campos de monto.
+const List<TextInputFormatter> formatoMonto = [FormateadorMonto()];
 
 /// Etiqueta en mayúsculas encima de un campo o sección.
 class Etiqueta extends StatelessWidget {

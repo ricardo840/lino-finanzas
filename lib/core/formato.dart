@@ -25,14 +25,7 @@ String formatoDinero(
   final pesos = absoluto ~/ 100;
   final resto = absoluto % 100;
 
-  // Separador de miles con coma.
-  final digitos = pesos.toString();
-  final miles = StringBuffer();
-  for (var i = 0; i < digitos.length; i++) {
-    miles.write(digitos[i]);
-    final restantes = digitos.length - i - 1;
-    if (restantes > 0 && restantes % 3 == 0) miles.write(',');
-  }
+  final miles = _agruparMiles(pesos.toString());
 
   final base = conCentavos
       ? '\$$miles.${resto.toString().padLeft(2, '0')}'
@@ -57,11 +50,40 @@ int? parsearDinero(String texto) {
   return pesos * 100 + centavos;
 }
 
-/// Centavos a texto editable sin símbolo: 123450 -> "1234.50".
+/// Centavos a texto editable sin símbolo: 123450 -> "1,234.50".
 String montoEditable(int centavos) {
-  final pesos = centavos ~/ 100;
+  final pesos = _agruparMiles('${centavos ~/ 100}');
   final resto = centavos % 100;
-  return resto == 0 ? '$pesos' : '$pesos.${resto.toString().padLeft(2, '0')}';
+  return resto == 0 ? pesos : '$pesos.${resto.toString().padLeft(2, '0')}';
+}
+
+/// Da formato a un monto mientras se escribe: deja solo dígitos y un punto,
+/// máximo dos decimales, y agrupa los miles con coma
+/// ("1234567.5" -> "1,234,567.5").
+String formatearMontoEscrito(String texto) {
+  final limpio = texto.replaceAll(RegExp(r'[^0-9.]'), '');
+  if (limpio.isEmpty) return '';
+  final punto = limpio.indexOf('.');
+  var enteros = punto < 0 ? limpio : limpio.substring(0, punto);
+  // Sin ceros a la izquierda; ".5" se completa como "0.5".
+  enteros = enteros.replaceFirst(RegExp(r'^0+(?=\d)'), '');
+  if (enteros.isEmpty) enteros = '0';
+  final miles = _agruparMiles(enteros);
+  if (punto < 0) return miles;
+  var decimales = limpio.substring(punto + 1).replaceAll('.', '');
+  if (decimales.length > 2) decimales = decimales.substring(0, 2);
+  return '$miles.$decimales';
+}
+
+/// "1234567" -> "1,234,567".
+String _agruparMiles(String digitos) {
+  final miles = StringBuffer();
+  for (var i = 0; i < digitos.length; i++) {
+    miles.write(digitos[i]);
+    final restantes = digitos.length - i - 1;
+    if (restantes > 0 && restantes % 3 == 0) miles.write(',');
+  }
+  return miles.toString();
 }
 
 /// "12 oct"

@@ -1,9 +1,11 @@
+import 'dart:math' as math;
+
 import 'package:flutter/widgets.dart';
 
 import '../tema/contexto.dart';
 
-/// Logotipo: una "L" geométrica sobre un cuadro de vidrio con el acento del
-/// tema.
+/// Logotipo: la flor de lino (cinco pétalos y centro dorado) sobre un cuadro
+/// de vidrio. Con el tema Medianoche coincide con el ícono de la app.
 class LogoLino extends StatelessWidget {
   const LogoLino({super.key, this.tamano = 72});
 
@@ -16,8 +18,11 @@ class LogoLino extends StatelessWidget {
       dimension: tamano,
       child: CustomPaint(
         painter: _PintorLogo(
-          acento: tema.acento,
-          trazo: tema.sobreAcento,
+          fondoAlto: Color.alphaBlend(tema.vidrioAlto, tema.fondo[1]),
+          fondoBajo: Color.alphaBlend(tema.vidrio, tema.fondo.last),
+          punta: tema.texto,
+          base: tema.acento,
+          centro: tema.advertencia,
           borde: tema.bordeVidrio,
         ),
       ),
@@ -26,11 +31,29 @@ class LogoLino extends StatelessWidget {
 }
 
 class _PintorLogo extends CustomPainter {
-  _PintorLogo({required this.acento, required this.trazo, required this.borde});
+  _PintorLogo({
+    required this.fondoAlto,
+    required this.fondoBajo,
+    required this.punta,
+    required this.base,
+    required this.centro,
+    required this.borde,
+  });
 
-  final Color acento;
-  final Color trazo;
+  final Color fondoAlto;
+  final Color fondoBajo;
+
+  /// Color de la punta de cada pétalo; se degrada hacia [base].
+  final Color punta;
+  final Color base;
+  final Color centro;
   final Color borde;
+
+  /// El dibujo está trazado sobre una cuadrícula de 512 puntos, la misma del
+  /// ícono de la app.
+  static const double _cuadricula = 512;
+  static const Offset _centroFlor = Offset(256, 256);
+  static const Rect _cajaPetalo = Rect.fromLTRB(212, 102, 300, 250);
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -44,7 +67,7 @@ class _PintorLogo extends CustomPainter {
         ..shader = LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [acento, acento.withValues(alpha: 0.62)],
+          colors: [fondoAlto, fondoBajo],
         ).createShader(area),
     );
     canvas.drawRRect(
@@ -55,20 +78,40 @@ class _PintorLogo extends CustomPainter {
         ..color = borde,
     );
 
-    final grosor = w * 0.14;
-    final radio = Radius.circular(grosor / 2);
-    final pintura = Paint()..color = trazo;
-    canvas.drawRRect(
-      RRect.fromLTRBR(w * 0.33, w * 0.22, w * 0.33 + grosor, w * 0.78, radio),
-      pintura,
-    );
-    canvas.drawRRect(
-      RRect.fromLTRBR(w * 0.33, w * 0.78 - grosor, w * 0.70, w * 0.78, radio),
-      pintura,
-    );
+    canvas.save();
+    canvas.scale(w / _cuadricula);
+
+    final petalo = Path()
+      ..moveTo(256, 250)
+      ..cubicTo(212, 204, 212, 142, 256, 102)
+      ..cubicTo(300, 142, 300, 204, 256, 250)
+      ..close();
+    final pinturaPetalo = Paint()
+      ..shader = LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [punta, base],
+      ).createShader(_cajaPetalo);
+    for (var i = 0; i < 5; i++) {
+      canvas.save();
+      canvas.translate(_centroFlor.dx, _centroFlor.dy);
+      canvas.rotate(i * 2 * math.pi / 5);
+      canvas.translate(-_centroFlor.dx, -_centroFlor.dy);
+      canvas.drawPath(petalo, pinturaPetalo);
+      canvas.restore();
+    }
+    canvas.drawCircle(_centroFlor, 34, Paint()..color = fondoBajo);
+    canvas.drawCircle(_centroFlor, 23, Paint()..color = centro);
+
+    canvas.restore();
   }
 
   @override
   bool shouldRepaint(_PintorLogo old) =>
-      old.acento != acento || old.trazo != trazo || old.borde != borde;
+      old.fondoAlto != fondoAlto ||
+      old.fondoBajo != fondoBajo ||
+      old.punta != punta ||
+      old.base != base ||
+      old.centro != centro ||
+      old.borde != borde;
 }

@@ -15,6 +15,10 @@ proyecto, las reglas de negocio y el estado actual.
 - Colores y tipografía solo desde el tema: `context.tema` (`LinoTema`). No
   pongas colores fijos en pantallas salvo sobre tarjetas con degradado.
 - Paneles con `PanelVidrio`, botones con `BotonLino`, campos con `CampoVidrio`.
+- Pestañas con `Shell` y `BarraIsla` (`lib/ui/widgets/barra_isla.dart`); no uses
+  `CupertinoTabScaffold` ni `CupertinoTabBar`.
+- No edites `android/` a mano: los ajustes van en `tool/configurar_android.dart`.
+- En pruebas de widgets usa los dobles de `test/apoyo.dart`.
 - Todo el SQL vive en `lib/data/repositorio.dart`. Cambios de esquema: sube
   `BaseDatos.version` y agrega la migración en `_migrar`.
 - Escrituras desde la UI: `await ref.escribir((repo) => ...)`.

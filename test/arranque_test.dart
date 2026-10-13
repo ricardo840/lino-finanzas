@@ -3,46 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lino/app.dart';
 import 'package:lino/core/seguridad/almacen_seguro.dart';
-import 'package:lino/core/seguridad/servicio_auth.dart';
-import 'package:lino/data/modelos/cuenta.dart';
-import 'package:lino/data/modelos/gasto_fijo.dart';
-import 'package:lino/data/modelos/movimiento.dart';
-import 'package:lino/data/repositorio.dart';
 import 'package:lino/estado/auth.dart';
-import 'package:lino/estado/servicios.dart';
-import 'package:local_auth/local_auth.dart';
+
+import 'apoyo.dart';
 
 const _pin = '482915';
-
-/// Teléfono sin huella ni otra biometría.
-class _SinBiometria implements LocalAuthentication {
-  @override
-  Future<bool> isDeviceSupported() async => false;
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
-}
-
-/// Repositorio de una base recién creada: todo vacío.
-class _RepositorioVacio implements Repositorio {
-  @override
-  Future<List<CuentaConSaldo>> cuentasConSaldo({bool incluirArchivadas = false}) async => [];
-
-  @override
-  Future<List<Movimiento>> movimientosDeSemana(DateTime lunes) async => [];
-
-  @override
-  Future<List<Movimiento>> ultimosMovimientos({int limite = 5}) async => [];
-
-  @override
-  Future<List<GastoFijo>> gastosFijos() async => [];
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
-}
-
-ServicioAuth _servicio(AlmacenSeguro almacen) =>
-    ServicioAuth(almacen, biometria: _SinBiometria(), iteraciones: 1000);
 
 /// Arranca la app completa con un almacén en memoria, en una pantalla del
 /// tamaño de un teléfono común (360 x 800 puntos).
@@ -51,14 +16,7 @@ Future<ProviderContainer> _abrirApp(WidgetTester tester, AlmacenSeguro almacen) 
   tester.view.devicePixelRatio = 3;
   addTearDown(tester.view.reset);
   await tester.pumpWidget(
-    ProviderScope(
-      overrides: [
-        almacenSeguroProvider.overrideWithValue(almacen),
-        servicioAuthProvider.overrideWith((ref) => _servicio(almacen)),
-        repositorioProvider.overrideWith((ref) async => _RepositorioVacio()),
-      ],
-      child: const LinoApp(),
-    ),
+    ProviderScope(overrides: sustitutos(almacen), child: const LinoApp()),
   );
   await tester.pumpAndSettle();
   return ProviderScope.containerOf(tester.element(find.byType(LinoApp)));
@@ -111,7 +69,7 @@ void main() {
 
   testWidgets('con PIN guardado abre bloqueada y solo entra el PIN correcto', (tester) async {
     final almacen = AlmacenEnMemoria();
-    await tester.runAsync(() => _servicio(almacen).guardarPin(_pin));
+    await tester.runAsync(() => servicioDePrueba(almacen).guardarPin(_pin));
     final contenedor = await _abrirApp(tester, almacen);
     expect(contenedor.read(authProvider).fase, FaseAuth.bloqueada);
     expect(find.text('Ingresa tu PIN'), findsOneWidget);

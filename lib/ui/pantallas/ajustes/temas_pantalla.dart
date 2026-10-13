@@ -22,6 +22,9 @@ class TemasPantalla extends ConsumerWidget {
     Widget cuadricula(List<LinoTema> temas) => GridView.count(
           crossAxisCount: 2,
           shrinkWrap: true,
+          // Sin esto la cuadrícula toma como margen propio el borde inferior
+          // de la pantalla y deja un hueco debajo de cada grupo.
+          padding: EdgeInsets.zero,
           physics: const NeverScrollableScrollPhysics(),
           mainAxisSpacing: 12,
           crossAxisSpacing: 12,

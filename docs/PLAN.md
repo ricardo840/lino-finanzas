@@ -12,7 +12,9 @@ simulador que recomienda cuándo y cómo pagar una compra.
 | Datos | Solo locales en el teléfono. Base SQLite cifrada (SQLCipher). Sin nube. |
 | Acceso | Login desde el inicio: PIN de 6 dígitos + huella. Bloqueo automático al salir. |
 | Privacidad | Modo privacidad que oculta todos los montos. |
+| Respaldos | Android no respalda ni traspasa los datos. Desinstalar la app los borra; la exportación llega en la Fase 2. |
 | Diseño | Glassmorfismo, aspecto profesional. **Prohibido usar emojis** en la app y en el código. |
+| Navegación | Cinco pestañas en una isla flotante de vidrio. Cada pestaña abre siempre en su pantalla principal. |
 | Temas | Gama personalizable: oscuros (Medianoche, Grafito, Esmeralda, Ámbar, Amatista) y claros de temporada (Primavera, Verano, Otoño, Invierno). |
 | Ícono | Una "L" sobre vidrio. Nombre visible: **Lino**. |
 | Sueldo | Semanal, cada domingo, monto variable. El sueldo del domingo financia la semana que empieza. |
@@ -68,6 +70,10 @@ simulador que recomienda cuándo y cómo pagar una compra.
 - Llave de la base: 256 bits aleatorios en el Keystore (no derivada del PIN
   para que funcione la huella y cambiar el PIN no obligue a recifrar).
 - Bloqueo automático configurable (inmediato, 30 s, 1 min, 5 min).
+- Sin respaldos de Android: `allowBackup="false"` y `res/xml/reglas_respaldo.xml`.
+  La llave del Keystore no viaja en un respaldo, así que una base restaurada
+  no se podría abrir.
+- El APK de release no pide permiso de INTERNET.
 
 ## Arquitectura
 
@@ -87,18 +93,28 @@ lib/
   estado/                    proveedores Riverpod (servicios, auth, ajustes, datos)
   ui/
     tema/                    LinoTema, catálogo de temas, context.tema
-    widgets/                 vidrio, fondo, campos, diálogos, teclado de PIN...
-    pantallas/               auth, inicio, cuentas, movimientos, simulador, ajustes
-test/                        pruebas de dominio, seguridad y widgets
-tool/configurar_android.dart ajustes de Android tras `flutter create`
+    widgets/                 vidrio, fondo, campos, diálogos, teclado de PIN, isla de pestañas...
+    pantallas/               auth, inicio, cuentas, movimientos, simulador, ajustes; shell.dart
+test/                        pruebas de dominio, seguridad y widgets (dobles en apoyo.dart)
+tool/configurar_android.dart ajustes de Android tras `flutter create` (idempotente)
 ```
 
 - Estado: `flutter_riverpod` (Notifier / FutureProvider). Cada escritura usa
   `ref.escribir(...)`, que sube `revisionDatosProvider` y refresca las pantallas.
 - La capa de seguridad (crear PIN / bloqueo) se dibuja encima del Navigator, así
   que esas pantallas no abren diálogos.
+- Pestañas (`ui/pantallas/shell.dart`): un `CupertinoTabView` por pestaña y la
+  `BarraIsla` flotando encima; su altura se anuncia como margen inferior en
+  `MediaQuery`. No se usa `CupertinoTabScaffold`. Los formularios se abren con
+  `abrirPantalla(..., modal: true)` y tapan la isla.
+- `android/` se genera con `flutter create`; lo que Lino necesita ahí (huella,
+  permisos, respaldos, minSdk) lo aplica `tool/configurar_android.dart`.
 
 ## Estado actual (v0.1.0)
+
+Verificado el 12 de octubre de 2026 con Flutter 3.47.1: `flutter analyze`
+limpio, 50 pruebas, APK de depuración y de release, y probado en un Redmi
+Note 13 Pro+ (Android 13). Repositorio: `github.com/ricardo840/lino-finanzas`.
 
 Hecho:
 - [x] Temas glass (9) con selector y modo privacidad.
@@ -109,8 +125,50 @@ Hecho:
 - [x] Inicio: disponible de la semana, pagos fijos pendientes, tarjetas, ahorro.
 - [x] Simulador de compras.
 - [x] Pruebas unitarias del dominio y de seguridad.
+- [x] Plataforma Android generada y configurada (huella, sin respaldos, minSdk 24).
+- [x] Barra de pestañas en isla flotante.
+- [x] Pruebas de widgets: arranque y bloqueo, formulario de cuenta y pestañas.
+
+## Notas para continuar
+
+- **Probar**: `flutter analyze`, `flutter test` y `flutter run` en teléfono (el
+  equipo de desarrollo no tiene emulador). Para uso diario, `flutter run --release`.
+- **Cuidado con los datos**: `flutter run` e `install` desinstalan la app si la
+  instalación falla (por ejemplo, al cambiar la firma), y eso borra todo. Hasta
+  tener el respaldo de la Fase 2, no cambiar la firma del APK.
+- **Pruebas de widgets**: los dobles están en `test/apoyo.dart`
+  (`sustitutos(almacen)`). El hash del PIN corre en otro isolate, así que hay
+  que esperarlo con `tester.runAsync`. La fuente de pruebas es casi el doble de
+  ancha que la real: las pantallas con renglones largos se prueban a 800 de ancho.
+- **Windows y VS Code**: si Gradle falla con `Couldn't delete ...R.jar`, el
+  archivo lo bloquea la extensión de Kotlin; basta recargar la ventana.
+- **Editar una cuenta**: el campo "Saldo actual" es el saldo de hoy. Si se
+  cambia, se ajusta el saldo inicial; si no se toca, el saldo se conserva.
+
+Pendientes menores detectados (sin corregir):
+- "Crea tu PIN" puede desbordarse en pantallas de menos de unos 700 puntos de alto.
+- `FilaSelector` no encoge su etiqueta; con la fuente del sistema muy grande
+  puede desbordarse.
+- El desbloqueo con PIN tarda del orden de 1 a 2 s en teléfono (PBKDF2 en Dart puro).
+- No hay pruebas del SQL de `repositorio.dart` (haría falta `sqflite_common_ffi`).
+- README y AGENTS mencionan tareas de VS Code, pero el proyecto no trae `.vscode/`.
 
 ## Siguientes pasos
+
+Fase 1.5 — mejoras tras la primera prueba. El detalle de cada una (qué se
+pidió, instrucción y cómo se comprueba) está en `docs/MEJORAS.md`; léelo solo
+al trabajar en ellas. Decidido con el usuario: botón de añadir flotante sobre
+la isla, calendario dentro de una pestaña "Planear" que sustituye a Simulador,
+y el ícono se elige entre propuestas. Orden sugerido:
+- [ ] M3 Comas de miles al escribir montos.
+- [ ] M4 Más colores de cuenta y banco "Plata"; M10 tipo de cuenta más claro.
+- [ ] M1 Ciclo de tarjeta medido en días (Plata: 30 de facturación y 30 de plazo). Migración a la versión 2 de la base.
+- [ ] M5 Botón flotante para registrar en Inicio, Movimientos y Cuentas.
+- [ ] M6 Encabezado tipo isla en todas las pantallas.
+- [ ] M2 Calendario de cortes, pagos, gastos fijos y sueldos en la pestaña Planear.
+- [ ] M8 Simulador con rango de fechas, línea de tiempo y compras planeadas.
+- [ ] M9 Ajustes nuevos (cuenta predeterminada, sueldo habitual, tema automático...).
+- [ ] M7 Ícono nuevo (independiente; primero se eligen propuestas).
 
 Fase 2
 - [ ] Bloquear capturas de pantalla y la vista previa en "apps recientes" (FLAG_SECURE).

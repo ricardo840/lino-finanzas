@@ -19,3 +19,29 @@ class PestanaActual extends Notifier<int> {
 }
 
 final pestanaProvider = NotifierProvider<PestanaActual, int>(PestanaActual.new);
+
+/// Vistas de la pestaña Planear.
+enum VistaPlanear { calendario, simulador }
+
+class VistaPlanearActual extends Notifier<VistaPlanear> {
+  @override
+  VistaPlanear build() => VistaPlanear.calendario;
+
+  void ver(VistaPlanear vista) => state = vista;
+}
+
+final vistaPlanearProvider =
+    NotifierProvider<VistaPlanearActual, VistaPlanear>(VistaPlanearActual.new);
+
+/// Día que se pidió simular desde el calendario. El simulador lo toma como
+/// fecha de compra y lo limpia.
+class DiaPorSimular extends Notifier<DateTime?> {
+  @override
+  DateTime? build() => null;
+
+  void pedir(DateTime dia) => state = dia;
+
+  void atender() => state = null;
+}
+
+final diaPorSimularProvider = NotifierProvider<DiaPorSimular, DateTime?>(DiaPorSimular.new);

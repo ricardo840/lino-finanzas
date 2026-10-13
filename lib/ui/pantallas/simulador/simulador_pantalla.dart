@@ -5,23 +5,23 @@ import '../../../core/fechas.dart';
 import '../../../core/formato.dart';
 import '../../../dominio/simulador_compra.dart';
 import '../../../estado/datos.dart';
+import '../../../estado/navegacion.dart';
 import '../../tema/contexto.dart';
 import '../../widgets/campos.dart';
 import '../../widgets/comunes.dart';
 import '../../widgets/dialogos.dart';
 import '../../widgets/monto_texto.dart';
-import '../../widgets/paginas.dart';
 import '../../widgets/vidrio.dart';
 
 /// "¿Cuándo y con qué me conviene comprar?"
-class SimuladorPantalla extends ConsumerStatefulWidget {
-  const SimuladorPantalla({super.key});
+class SimuladorVista extends ConsumerStatefulWidget {
+  const SimuladorVista({super.key});
 
   @override
-  ConsumerState<SimuladorPantalla> createState() => _SimuladorPantallaState();
+  ConsumerState<SimuladorVista> createState() => _SimuladorVistaState();
 }
 
-class _SimuladorPantallaState extends ConsumerState<SimuladorPantalla> {
+class _SimuladorVistaState extends ConsumerState<SimuladorVista> {
   final _monto = TextEditingController();
   DateTime _fecha = soloFecha(DateTime.now());
   int _espera = 0;
@@ -79,11 +79,20 @@ class _SimuladorPantallaState extends ConsumerState<SimuladorPantalla> {
 
   @override
   Widget build(BuildContext context) {
+    // El calendario puede pedir que se simule una compra en un día concreto.
+    ref.listen<DateTime?>(diaPorSimularProvider, (_, dia) {
+      if (dia == null) return;
+      setState(() {
+        _fecha = dia;
+        _resultado = null;
+      });
+      ref.read(diaPorSimularProvider.notifier).atender();
+    });
     final tema = context.tema;
     final resultado = _resultado;
-    return PaginaPestana(
-      titulo: 'Simulador',
-      hijos: [
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(4, 0, 4, 14),
           child: Text(

@@ -8,6 +8,7 @@ import '../../../dominio/ciclo_tarjeta.dart';
 import '../../../dominio/resumen_semanal.dart';
 import '../../../estado/ajustes.dart';
 import '../../../estado/datos.dart';
+import '../../../estado/navegacion.dart';
 import '../../categorias.dart';
 import '../../tema/contexto.dart';
 import '../../tema/temas.dart';
@@ -306,14 +307,14 @@ class _PanelTarjetas extends StatelessWidget {
   }
 }
 
-class _TarjetaResumen extends StatelessWidget {
+class _TarjetaResumen extends ConsumerWidget {
   const _TarjetaResumen({required this.tarjeta, required this.hoy});
 
   final CuentaConSaldo tarjeta;
   final DateTime hoy;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final cuenta = tarjeta.cuenta;
     final colores = coloresCuenta(cuenta.color);
     const blanco = Color(0xFFFFFFFF);
@@ -321,6 +322,13 @@ class _TarjetaResumen extends StatelessWidget {
     final ciclo = cicloDe(cuenta);
 
     return PanelVidrio(
+      // Con fechas capturadas, la tarjeta lleva a su corte y pago en el calendario.
+      onTap: ciclo == null
+          ? null
+          : () {
+              ref.read(vistaPlanearProvider.notifier).ver(VistaPlanear.calendario);
+              ref.read(pestanaProvider.notifier).ir(Pestana.planear);
+            },
       gradiente: LinearGradient(
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
@@ -338,7 +346,11 @@ class _TarjetaResumen extends StatelessWidget {
                   style: const TextStyle(color: blanco, fontSize: 15, fontWeight: FontWeight.w600),
                 ),
               ),
-              const Icon(CupertinoIcons.creditcard_fill, color: blancoSuave, size: 20),
+              Icon(
+                ciclo == null ? CupertinoIcons.creditcard_fill : CupertinoIcons.calendar,
+                color: blancoSuave,
+                size: 20,
+              ),
             ],
           ),
           const SizedBox(height: 14),

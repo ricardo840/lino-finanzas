@@ -12,7 +12,7 @@ import 'cuentas/cuentas_pantalla.dart';
 import 'inicio/inicio_pantalla.dart';
 import 'movimientos/movimiento_form_pantalla.dart';
 import 'movimientos/movimientos_pantalla.dart';
-import 'simulador/simulador_pantalla.dart';
+import 'planear/planear_pantalla.dart';
 
 /// Pestañas principales, con la barra en una isla flotante.
 ///
@@ -41,11 +41,7 @@ class _ShellState extends ConsumerState<Shell> {
       iconoActivo: CupertinoIcons.creditcard_fill,
     ),
     PestanaIsla(etiqueta: 'Movimientos', icono: CupertinoIcons.list_bullet),
-    PestanaIsla(
-      etiqueta: 'Simulador',
-      icono: CupertinoIcons.lightbulb,
-      iconoActivo: CupertinoIcons.lightbulb_fill,
-    ),
+    PestanaIsla(etiqueta: 'Planear', icono: CupertinoIcons.calendar),
     PestanaIsla(
       etiqueta: 'Ajustes',
       icono: CupertinoIcons.gear_alt,
@@ -85,7 +81,7 @@ class _ShellState extends ConsumerState<Shell> {
           Pestana.inicio => const InicioPantalla(),
           Pestana.cuentas => const CuentasPantalla(),
           Pestana.movimientos => const MovimientosPantalla(),
-          Pestana.planear => const SimuladorPantalla(),
+          Pestana.planear => const PlanearPantalla(),
           _ => const AjustesPantalla(),
         },
       );

@@ -37,7 +37,7 @@ Future<void> _tocar(WidgetTester tester, Finder objetivo) async {
 void main() {
   testWidgets('la isla muestra las cinco pestañas y cambia de pantalla', (tester) async {
     await _abrirShell(tester);
-    for (final etiqueta in ['Inicio', 'Cuentas', 'Movimientos', 'Simulador', 'Ajustes']) {
+    for (final etiqueta in ['Inicio', 'Cuentas', 'Movimientos', 'Planear', 'Ajustes']) {
       expect(_pestana(etiqueta), findsOneWidget);
     }
     expect(find.text('Empieza con tus cuentas'), findsOneWidget);
@@ -49,7 +49,11 @@ void main() {
     await _tocar(tester, _pestana('Movimientos'));
     expect(find.text('Semana sin movimientos'), findsOneWidget);
 
-    await _tocar(tester, _pestana('Simulador'));
+    // Planear abre en el calendario y también tiene el simulador.
+    await _tocar(tester, _pestana('Planear'));
+    expect(find.text('Sin eventos este día.'), findsOneWidget);
+    expect(find.text('Simular compra'), findsNothing);
+    await _tocar(tester, find.text('Simulador'));
     expect(find.text('Simular compra'), findsOneWidget);
 
     await _tocar(tester, _pestana('Ajustes'));

@@ -28,11 +28,6 @@ class MovimientosPantalla extends ConsumerWidget {
 
     return PaginaPestana(
       titulo: 'Movimientos',
-      derecha: BotonIcono(
-        icono: CupertinoIcons.plus_circle_fill,
-        tamano: 28,
-        onPressed: () => abrirPantalla<void>(context, const MovimientoFormPantalla(), modal: true),
-      ),
       hijos: [
         const SelectorSemana(),
         const SizedBox(height: 4),

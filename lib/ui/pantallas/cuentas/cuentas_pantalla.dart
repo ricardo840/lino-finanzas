@@ -22,11 +22,6 @@ class CuentasPantalla extends ConsumerWidget {
     final cuentas = ref.watch(cuentasProvider);
     return PaginaPestana(
       titulo: 'Cuentas',
-      derecha: BotonIcono(
-        icono: CupertinoIcons.plus_circle_fill,
-        tamano: 28,
-        onPressed: () => abrirPantalla<void>(context, const CuentaFormPantalla(), modal: true),
-      ),
       hijos: cuentas.when(
           skipLoadingOnReload: true,
         loading: () => const [Cargando()],

@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:lino/core/seguridad/almacen_seguro.dart';
 import 'package:lino/ui/pantallas/shell.dart';
 import 'package:lino/ui/widgets/barra_isla.dart';
+import 'package:lino/ui/widgets/boton_flotante.dart';
 
 import 'apoyo.dart';
 
@@ -64,6 +65,26 @@ void main() {
     expect(isla.left, greaterThan(pantalla.left));
     expect(isla.right, lessThan(pantalla.right));
     expect(isla.bottom, lessThan(pantalla.bottom));
+  });
+
+  testWidgets('el botón flotante dice qué registra y abre su formulario', (tester) async {
+    await _abrirShell(tester);
+    // En Inicio registra un movimiento.
+    await _tocar(tester, find.widgetWithText(BotonFlotante, 'Movimiento'));
+    expect(find.text('Nuevo movimiento'), findsOneWidget);
+    await _tocar(tester, find.text('Cancelar'));
+
+    await _tocar(tester, _pestana('Cuentas'));
+    await _tocar(tester, find.widgetWithText(BotonFlotante, 'Cuenta'));
+    expect(find.text('Nueva cuenta'), findsOneWidget);
+    await _tocar(tester, find.text('Cancelar'));
+
+    await _tocar(tester, _pestana('Movimientos'));
+    expect(find.widgetWithText(BotonFlotante, 'Movimiento'), findsOneWidget);
+
+    // Ajustes no tiene acción principal.
+    await _tocar(tester, _pestana('Ajustes'));
+    expect(find.byType(BotonFlotante), findsNothing);
   });
 
   testWidgets('al volver a una pestaña abre en su pantalla principal', (tester) async {

@@ -1,10 +1,16 @@
 import 'package:flutter/cupertino.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../estado/navegacion.dart';
 import '../tema/contexto.dart';
 import '../widgets/barra_isla.dart';
+import '../widgets/boton_flotante.dart';
+import '../widgets/paginas.dart';
 import 'ajustes/ajustes_pantalla.dart';
+import 'cuentas/cuenta_form_pantalla.dart';
 import 'cuentas/cuentas_pantalla.dart';
 import 'inicio/inicio_pantalla.dart';
+import 'movimientos/movimiento_form_pantalla.dart';
 import 'movimientos/movimientos_pantalla.dart';
 import 'simulador/simulador_pantalla.dart';
 
@@ -14,14 +20,15 @@ import 'simulador/simulador_pantalla.dart';
 /// que se abre y conserva su pantalla principal al cambiar a otra. Las
 /// pantallas internas (Tema, Gastos fijos...) se cierran al salir, para que
 /// cada pestaña abra siempre en su pantalla principal.
-class Shell extends StatefulWidget {
+class Shell extends ConsumerStatefulWidget {
   const Shell({super.key});
 
   @override
-  State<Shell> createState() => _ShellState();
+  ConsumerState<Shell> createState() => _ShellState();
 }
 
-class _ShellState extends State<Shell> {
+class _ShellState extends ConsumerState<Shell> {
+  // En el mismo orden que las constantes de [Pestana].
   static const _pestanas = [
     PestanaIsla(
       etiqueta: 'Inicio',
@@ -49,58 +56,82 @@ class _ShellState extends State<Shell> {
   final _navegadores = [
     for (var i = 0; i < _pestanas.length; i++) GlobalKey<NavigatorState>(),
   ];
-  final _visitadas = <int>{0};
-  int _indice = 0;
+  final _visitadas = <int>{};
 
-  void _alTocar(int nueva) {
-    if (nueva == _indice) {
+  void _alTocar(int pestana) {
+    if (pestana == ref.read(pestanaProvider)) {
       // Tocar la pestaña abierta regresa a su pantalla principal.
-      _navegadores[nueva].currentState?.popUntil((ruta) => ruta.isFirst);
+      _navegadores[pestana].currentState?.popUntil((ruta) => ruta.isFirst);
       return;
     }
-    FocusManager.instance.primaryFocus?.unfocus();
-    setState(() {
-      // Si la pestaña que se deja tiene pantallas internas abiertas, se le da
-      // un navegador nuevo: al volver abre en su pantalla principal y no
-      // parece que esta desapareció. Con una llave nueva el cambio es
-      // inmediato, sin animación de regreso a medias.
-      if (_navegadores[_indice].currentState?.canPop() ?? false) {
-        _navegadores[_indice] = GlobalKey<NavigatorState>();
-      }
-      _indice = nueva;
-      _visitadas.add(nueva);
-    });
+    ref.read(pestanaProvider.notifier).ir(pestana);
   }
 
-  Widget _pagina(int indice) => CupertinoTabView(
-        navigatorKey: _navegadores[indice],
-        builder: (context) => switch (indice) {
-          0 => const InicioPantalla(),
-          1 => const CuentasPantalla(),
-          2 => const MovimientosPantalla(),
-          3 => const SimuladorPantalla(),
+  /// Al cambiar de pestaña: se cierra el teclado y, si la que se deja tiene
+  /// pantallas internas abiertas, se le da un navegador nuevo. Así al volver
+  /// abre en su pantalla principal y no parece que esta desapareció; con una
+  /// llave nueva el cambio es inmediato, sin animación de regreso a medias.
+  void _alCambiar(int? anterior, int nueva) {
+    FocusManager.instance.primaryFocus?.unfocus();
+    if (anterior == null) return;
+    if (_navegadores[anterior].currentState?.canPop() ?? false) {
+      setState(() => _navegadores[anterior] = GlobalKey<NavigatorState>());
+    }
+  }
+
+  Widget _pagina(int pestana) => CupertinoTabView(
+        navigatorKey: _navegadores[pestana],
+        builder: (context) => switch (pestana) {
+          Pestana.inicio => const InicioPantalla(),
+          Pestana.cuentas => const CuentasPantalla(),
+          Pestana.movimientos => const MovimientosPantalla(),
+          Pestana.planear => const SimuladorPantalla(),
           _ => const AjustesPantalla(),
         },
       );
 
+  /// Acción principal de la pestaña abierta, o null si no tiene.
+  BotonFlotante? _accion(int pestana) => switch (pestana) {
+        Pestana.inicio || Pestana.movimientos => BotonFlotante(
+            key: const ValueKey('movimiento'),
+            texto: 'Movimiento',
+            onPressed: () =>
+                abrirPantalla<void>(context, const MovimientoFormPantalla(), modal: true),
+          ),
+        Pestana.cuentas => BotonFlotante(
+            key: const ValueKey('cuenta'),
+            texto: 'Cuenta',
+            onPressed: () => abrirPantalla<void>(context, const CuentaFormPantalla(), modal: true),
+          ),
+        _ => null,
+      };
+
   @override
   Widget build(BuildContext context) {
+    ref.listen<int>(pestanaProvider, _alCambiar);
+    final indice = ref.watch(pestanaProvider);
+    _visitadas.add(indice);
+
     final tema = context.tema;
     final medios = MediaQuery.of(context);
     final teclado = medios.viewInsets.bottom;
+    final accion = _accion(indice);
     const espacioIsla = BarraIsla.altura + BarraIsla.margenInferior;
+    final espacioInferior =
+        espacioIsla + (accion == null ? 0 : BotonFlotante.altura + BotonFlotante.separacion);
 
     // Igual que CupertinoTabScaffold: el teclado se descuenta aquí y, si no
-    // tapa la isla, su altura se anuncia como margen inferior para que las
-    // listas puedan desplazarse por encima de ella.
+    // tapa la isla, lo que ocupan la isla y el botón flotante se anuncia como
+    // margen inferior para que las listas puedan desplazarse por encima.
     var mediosContenido = medios.removeViewInsets(removeBottom: true);
     if (espacioIsla > teclado) {
       mediosContenido = mediosContenido.copyWith(
         padding: mediosContenido.padding.copyWith(
-          bottom: medios.padding.bottom + espacioIsla,
+          bottom: medios.padding.bottom + espacioInferior,
         ),
       );
     }
+    final bordeIsla = medios.padding.bottom + BarraIsla.margenInferior;
 
     return ColoredBox(
       color: tema.fondo.first,
@@ -116,11 +147,11 @@ class _ShellState extends State<Shell> {
                 children: [
                   for (var i = 0; i < _pestanas.length; i++)
                     HeroMode(
-                      enabled: i == _indice,
+                      enabled: i == indice,
                       child: Offstage(
-                        offstage: i != _indice,
+                        offstage: i != indice,
                         child: TickerMode(
-                          enabled: i == _indice,
+                          enabled: i == indice,
                           child: _visitadas.contains(i) ? _pagina(i) : const SizedBox.shrink(),
                         ),
                       ),
@@ -130,10 +161,19 @@ class _ShellState extends State<Shell> {
             ),
           ),
           Positioned(
+            right: BarraIsla.margenLateral,
+            bottom: bordeIsla + BarraIsla.altura + BotonFlotante.separacion,
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 180),
+              // Con el teclado abierto quedaría escondido detrás; no se dibuja.
+              child: teclado > 0 ? null : accion,
+            ),
+          ),
+          Positioned(
             left: BarraIsla.margenLateral,
             right: BarraIsla.margenLateral,
-            bottom: medios.padding.bottom + BarraIsla.margenInferior,
-            child: BarraIsla(pestanas: _pestanas, indice: _indice, alTocar: _alTocar),
+            bottom: bordeIsla,
+            child: BarraIsla(pestanas: _pestanas, indice: indice, alTocar: _alTocar),
           ),
         ],
       ),

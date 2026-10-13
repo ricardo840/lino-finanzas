@@ -35,11 +35,6 @@ class InicioPantalla extends ConsumerWidget {
         icono: privacidad ? CupertinoIcons.eye_slash : CupertinoIcons.eye,
         onPressed: () => ref.read(ajustesProvider.notifier).alternarPrivacidad(),
       ),
-      derecha: BotonIcono(
-        icono: CupertinoIcons.plus_circle_fill,
-        tamano: 28,
-        onPressed: () => abrirPantalla<void>(context, const MovimientoFormPantalla(), modal: true),
-      ),
       hijos: cuentas.when(
           skipLoadingOnReload: true,
         loading: () => const [Cargando()],

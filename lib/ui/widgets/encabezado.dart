@@ -61,22 +61,22 @@ class EncabezadoFlotante extends StatelessWidget {
   Widget build(BuildContext context) {
     final tema = context.tema;
     final arriba = MediaQuery.paddingOf(context).top;
+    final alto = arriba + espacio + 18;
     return SizedBox(
-      height: arriba + espacio + 18,
+      height: alto,
       child: Stack(
         fit: StackFit.expand,
         children: [
           IgnorePointer(
             child: DecoratedBox(
               decoration: BoxDecoration(
+                // Opaco bajo la barra de estado y la mitad de la cápsula, para
+                // que no se asome el título grande; después se desvanece.
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: [
-                    tema.fondo.first.withValues(alpha: 0.92),
-                    tema.fondo.first.withValues(alpha: 0),
-                  ],
-                  stops: const [0.35, 1],
+                  colors: [tema.fondo.first, tema.fondo.first.withValues(alpha: 0)],
+                  stops: [(arriba + CapsulaEncabezado.altura / 2) / alto, 1],
                 ),
               ),
             ),
